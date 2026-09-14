@@ -3,6 +3,8 @@ import { useNavigate } from "react-router-dom";
 import { StepIndicator } from "../components/StepIndicator";
 import { Button } from "../components/ui/Button";
 import { LiveVerificationCamera } from "../components/LiveVerificationCamera";
+import { PageShell } from "../components/PageShell";
+import { PageHeader } from "../components/PageHeader";
 import { getCurrentCitizen } from "../services/citizen.service";
 import { CitizenProfile } from "../types/service";
 import {
@@ -84,44 +86,39 @@ export default function DeclarationPage() {
 
   if (isLoading) {
     return (
-      <div dir="rtl" className="flex min-h-screen items-center justify-center bg-[#F6F8FA]">
-        <div className="h-8 w-8 animate-spin rounded-full border-2 border-[#E2E7EB] border-t-[#123F63]" />
-      </div>
+      <PageShell className="items-center justify-center">
+        <div className="h-8 w-8 animate-spin rounded-full border-2 border-line border-t-primary" />
+      </PageShell>
     );
   }
 
   if (!citizen) {
     return (
-      <div dir="rtl" className="flex min-h-screen items-center justify-center bg-[#F6F8FA] px-6 text-center">
-        <p className="text-sm font-semibold text-[#C0392B]">
+      <PageShell className="items-center justify-center px-6 text-center">
+        <p className="text-sm font-semibold text-danger">
           تعذر تحميل بياناتك، يرجى تسجيل الدخول مجدداً
         </p>
-      </div>
+      </PageShell>
     );
   }
 
   return (
-    <div dir="rtl" className="min-h-screen bg-[#F6F8FA] font-cairo">
-      <header className="flex items-center gap-3 border-b border-[#E2E7EB] px-6 py-4">
-        <button onClick={() => navigate(-1)} aria-label="رجوع" className="text-[#17212B]">
-          ←
-        </button>
-        <h1 className="text-base font-bold text-[#17212B]">الإقرار السنوي</h1>
-      </header>
+    <PageShell>
+      <PageHeader title="الإقرار السنوي" />
 
       <StepIndicator steps={STEPS} currentStep={step} />
 
       <main className="px-6 pb-10 pt-2">
         {step === 0 && (
           <div className="flex flex-col gap-4">
-            <div className="rounded-2xl border border-[#E2E7EB] bg-white p-5">
-              <p className="text-xs font-semibold text-[#687581]">الاسم الرباعي</p>
-              <p className="mt-1 text-base font-bold text-[#17212B]">{citizen.fullName}</p>
-              <div className="my-4 h-px bg-[#E2E7EB]" />
-              <p className="text-xs font-semibold text-[#687581]">رقم المعاش</p>
-              <p className="mt-1 text-base font-bold text-[#17212B]">{citizen.pensionNumber}</p>
+            <div className="rounded-2xl border border-line bg-surface p-5 shadow-card">
+              <p className="text-xs font-semibold text-ink-soft">الاسم الرباعي</p>
+              <p className="mt-1 text-base font-bold text-ink">{citizen.fullName}</p>
+              <div className="my-4 h-px bg-line" />
+              <p className="text-xs font-semibold text-ink-soft">رقم المعاش</p>
+              <p className="mt-1 text-base font-bold tabular-nums text-ink">{citizen.pensionNumber}</p>
             </div>
-            <p className="text-[13px] font-medium text-[#687581]">
+            <p className="text-[13px] font-medium leading-relaxed text-ink-soft">
               تأكد أن بياناتك أعلاه صحيحة قبل المتابعة لاختيار موعد الإقرار.
             </p>
             <Button onClick={() => setStep(1)}>متابعة</Button>
@@ -130,9 +127,9 @@ export default function DeclarationPage() {
 
         {step === 1 && (
           <div className="flex flex-col gap-3">
-            <p className="text-sm font-semibold text-[#17212B]">اختر الموعد المناسب</p>
+            <p className="text-sm font-semibold text-ink">اختر الموعد المناسب</p>
             {errorMessage && (
-              <div className="rounded-xl bg-[#FBEAE8] p-3 text-center text-[13px] font-semibold text-[#C0392B]">
+              <div className="rounded-xl bg-danger-light p-3 text-center text-[13px] font-semibold text-danger">
                 {errorMessage}
               </div>
             )}
@@ -143,8 +140,8 @@ export default function DeclarationPage() {
                   onClick={() => handleSelectSlot(slot)}
                   className={`rounded-xl border p-3 text-right text-sm font-semibold transition-colors ${
                     selectedSlot?.date === slot.date && selectedSlot?.time === slot.time
-                      ? "border-[#123F63] bg-[#E8EEF4] text-[#123F63]"
-                      : "border-[#E2E7EB] bg-white text-[#17212B]"
+                      ? "border-primary bg-primary-light text-primary"
+                      : "border-line bg-surface text-ink hover:border-primary/30"
                   }`}
                 >
                   {slot.label}
@@ -160,16 +157,16 @@ export default function DeclarationPage() {
 
         {step === 3 && selectedSlot && (
           <div className="flex flex-col gap-4">
-            <div className="rounded-2xl border border-[#E2E7EB] bg-white p-5">
-              <p className="text-xs font-semibold text-[#687581]">الموعد المختار</p>
-              <p className="mt-1 text-base font-bold text-[#17212B]">{selectedSlot.label}</p>
-              <div className="my-4 h-px bg-[#E2E7EB]" />
-              <p className="text-xs font-semibold text-[#687581]">حالة التحقق</p>
-              <p className="mt-1 text-base font-bold text-[#16803C]">تم التحقق بنجاح</p>
+            <div className="rounded-2xl border border-line bg-surface p-5 shadow-card">
+              <p className="text-xs font-semibold text-ink-soft">الموعد المختار</p>
+              <p className="mt-1 text-base font-bold text-ink">{selectedSlot.label}</p>
+              <div className="my-4 h-px bg-line" />
+              <p className="text-xs font-semibold text-ink-soft">حالة التحقق</p>
+              <p className="mt-1 text-base font-bold text-success">تم التحقق بنجاح</p>
             </div>
 
             {errorMessage && (
-              <div className="rounded-xl bg-[#FBEAE8] p-3 text-center text-[13px] font-semibold text-[#C0392B]">
+              <div className="rounded-xl bg-danger-light p-3 text-center text-[13px] font-semibold text-danger">
                 {errorMessage}
               </div>
             )}
@@ -182,13 +179,13 @@ export default function DeclarationPage() {
 
         {step === 4 && (
           <div className="flex flex-col items-center gap-3 pt-10 text-center">
-            <div className="flex h-16 w-16 items-center justify-center rounded-full bg-[#EAF7F0] text-3xl text-[#16803C]">
+            <div className="flex h-16 w-16 items-center justify-center rounded-full bg-success-light text-3xl text-success">
               ✓
             </div>
-            <p className="text-lg font-extrabold text-[#17212B]">
+            <p className="text-lg font-extrabold text-ink">
               تم تسجيل إقرارك السنوي بنجاح
             </p>
-            <p className="max-w-xs text-[13px] font-medium text-[#687581]">
+            <p className="max-w-xs text-[13px] font-medium leading-relaxed text-ink-soft">
               يمكنك متابعة حالة إقرارك من صفحة "معاملاتي" في أي وقت.
             </p>
             <Button onClick={() => navigate("/home")} className="mt-4">
@@ -197,6 +194,6 @@ export default function DeclarationPage() {
           </div>
         )}
       </main>
-    </div>
+    </PageShell>
   );
 }

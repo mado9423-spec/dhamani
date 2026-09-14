@@ -2,6 +2,7 @@ import { FormEvent, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "../components/ui/Button";
 import { TextField } from "../components/ui/TextField";
+import { PageShell } from "../components/PageShell";
 import {
   getCurrentEmployee,
   searchCitizenByPensionNumber,
@@ -44,20 +45,20 @@ export default function EmployeeDashboardPage() {
 
   if (isLoadingEmployee) {
     return (
-      <div dir="rtl" className="flex min-h-screen items-center justify-center bg-[#17212B]">
+      <PageShell bg="bg-primary-dark" className="items-center justify-center">
         <div className="h-8 w-8 animate-spin rounded-full border-2 border-white/20 border-t-white" />
-      </div>
+      </PageShell>
     );
   }
 
   return (
-    <div dir="rtl" className="min-h-screen bg-[#F5F6F7] font-cairo">
-      <header className="bg-[#17212B] px-6 py-5">
-        <p className="text-xs font-semibold text-white/60">لوحة الموظف</p>
-        <h1 className="mt-1 text-lg font-bold text-white">
+    <PageShell>
+      <header className="bg-primary-dark px-6 py-6">
+        <p className="text-xs font-semibold uppercase tracking-wide text-white/50">لوحة الموظف</p>
+        <h1 className="mt-1.5 text-lg font-bold text-white">
           {employee?.fullName}
         </h1>
-        <p className="mt-0.5 text-[12px] font-medium text-white/50">
+        <p className="mt-1 text-[12px] font-medium tabular-nums text-white/50">
           رقم الموظف: {employee?.employeeNumber} •{" "}
           {employee?.role === "admin"
             ? "أدمن"
@@ -75,6 +76,7 @@ export default function EmployeeDashboardPage() {
             placeholder="أدخل رقم المعاش"
             value={pensionNumber}
             onChange={(e) => setPensionNumber(e.target.value)}
+            className="tabular-nums"
           />
           <Button type="submit" isLoading={isSearching}>
             بحث
@@ -82,18 +84,18 @@ export default function EmployeeDashboardPage() {
         </form>
 
         {searched && !result && (
-          <div className="mt-6 rounded-2xl bg-[#FBEAE8] p-4 text-center text-sm font-semibold text-[#C0392B]">
+          <div className="mt-6 rounded-2xl bg-danger-light p-4 text-center text-sm font-semibold text-danger">
             لا يوجد مواطن بهذا الرقم في نطاق صلاحياتك
           </div>
         )}
 
         {result && (
-          <div className="mt-6 rounded-2xl border border-[#E2E7EB] bg-white p-5">
-            <p className="text-xs font-semibold text-[#687581]">الاسم الرباعي</p>
-            <p className="mt-1 text-base font-bold text-[#17212B]">{result.fullName}</p>
-            <div className="my-3 h-px bg-[#E2E7EB]" />
-            <p className="text-xs font-semibold text-[#687581]">رقم المعاش</p>
-            <p className="mt-1 text-base font-bold text-[#17212B]">{result.pensionNumber}</p>
+          <div className="mt-6 rounded-2xl border border-line bg-surface p-5 shadow-card">
+            <p className="text-xs font-semibold text-ink-soft">الاسم الرباعي</p>
+            <p className="mt-1 text-base font-bold text-ink">{result.fullName}</p>
+            <div className="my-3 h-px bg-line" />
+            <p className="text-xs font-semibold text-ink-soft">رقم المعاش</p>
+            <p className="mt-1 text-base font-bold tabular-nums text-ink">{result.pensionNumber}</p>
 
             <Button
               onClick={() => navigate(`/employee/citizens/${result.id}`)}
@@ -104,6 +106,6 @@ export default function EmployeeDashboardPage() {
           </div>
         )}
       </main>
-    </div>
+    </PageShell>
   );
 }

@@ -5,15 +5,12 @@ export type TransactionStatus =
   | "completed"
   | "suspended";
 
-const STATUS_CONFIG: Record<
-  TransactionStatus,
-  { label: string; bg: string; text: string }
-> = {
-  pending_review: { label: "قيد المراجعة", bg: "#FBF3E1", text: "#B8860B" },
-  accepted: { label: "مقبولة", bg: "#E8EEF4", text: "#123F63" },
-  rejected: { label: "مرفوضة", bg: "#FBEAE8", text: "#C0392B" },
-  completed: { label: "مكتملة", bg: "#EAF7F0", text: "#16803C" },
-  suspended: { label: "معلقة", bg: "#F3F4F6", text: "#687581" },
+const STATUS_CONFIG: Record<TransactionStatus, { label: string; className: string }> = {
+  pending_review: { label: "قيد المراجعة", className: "bg-accent-light text-accent" },
+  accepted: { label: "مقبولة", className: "bg-primary-light text-primary" },
+  rejected: { label: "مرفوضة", className: "bg-danger-light text-danger" },
+  completed: { label: "مكتملة", className: "bg-success-light text-success" },
+  suspended: { label: "معلقة", className: "bg-line-soft text-ink-soft" },
 };
 
 export function StatusBadge({ status }: { status: TransactionStatus }) {
@@ -21,8 +18,7 @@ export function StatusBadge({ status }: { status: TransactionStatus }) {
 
   return (
     <span
-      className="inline-flex items-center rounded-full px-3 py-1 text-[12px] font-bold"
-      style={{ backgroundColor: config.bg, color: config.text }}
+      className={`inline-flex items-center rounded-full px-3 py-1 text-[12px] font-bold ${config.className}`}
     >
       {config.label}
     </span>

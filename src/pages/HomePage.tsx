@@ -4,6 +4,7 @@ import { CitizenProfile, ServiceItem } from "../types/service";
 import { ServiceCard } from "../components/ServiceCard";
 import { BottomNav } from "../components/BottomNav";
 import { Logo } from "../components/Logo";
+import { PageShell } from "../components/PageShell";
 
 const services: ServiceItem[] = [
   {
@@ -86,17 +87,17 @@ export default function HomePage() {
   const gridServices = services.filter((s) => !s.featured && !s.fullWidth);
 
   return (
-    <div dir="rtl" className="min-h-screen bg-[#F3F5F8] pb-24 font-cairo">
-      <header className="bg-[#F6F8FA] px-6 pb-5 pt-8 shadow-[0_1px_0_0_#E2E7EB]">
-        <div className="mb-4 flex items-center gap-2">
+    <PageShell className="pb-24">
+      <header className="border-b border-line-soft bg-surface px-6 pb-5 pt-8">
+        <div className="mb-5 flex items-center gap-2">
           <Logo size="sm" />
-          <span className="text-sm font-bold text-[#123F63]">
+          <span className="text-sm font-bold text-primary">
             صندوق الضمان الاجتماعي
           </span>
         </div>
 
         <p
-          className={`text-sm font-medium text-[#687581] transition-opacity duration-500 ${
+          className={`text-sm font-medium text-ink-soft transition-opacity duration-500 ${
             showGreeting ? "opacity-100" : "h-0 opacity-0"
           }`}
         >
@@ -104,18 +105,18 @@ export default function HomePage() {
         </p>
 
         {isLoading ? (
-          <div className="mt-1 h-7 w-40 animate-pulse rounded-md bg-[#E2E7EB]" />
+          <div className="mt-1 h-7 w-40 animate-pulse rounded-md bg-line" />
         ) : (
           <>
-            <h1 className="mt-1 text-xl font-extrabold text-[#17212B]">
+            <h1 className="mt-1 text-xl font-extrabold tracking-tight text-ink">
               {citizen?.fullName ?? "مواطن"}
             </h1>
-            <div className="mt-2 h-[3px] w-10 rounded-full bg-[#B8860B]" />
+            <div className="mt-2 h-[3px] w-10 rounded-full bg-accent" />
           </>
         )}
       </header>
 
-      <main className="flex flex-col gap-3 px-6 pt-5">
+      <main className="flex flex-col gap-3 px-6 pt-6">
         {featuredService && <ServiceCard service={featuredService} />}
         {fullWidthService && <ServiceCard service={fullWidthService} />}
 
@@ -127,6 +128,6 @@ export default function HomePage() {
       </main>
 
       <BottomNav />
-    </div>
+    </PageShell>
   );
 }

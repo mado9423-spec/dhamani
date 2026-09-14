@@ -3,6 +3,8 @@ import { useNavigate, useParams } from "react-router-dom";
 import { Button } from "../components/ui/Button";
 import { Select } from "../components/ui/Select";
 import { StatusBadge, TransactionStatus } from "../components/StatusBadge";
+import { PageShell } from "../components/PageShell";
+import { PageHeader } from "../components/PageHeader";
 import {
   getCitizenById,
   getCitizenDeclarations,
@@ -93,51 +95,46 @@ export default function EmployeeCitizenDetailPage() {
 
   if (isLoading) {
     return (
-      <div dir="rtl" className="flex min-h-screen items-center justify-center bg-[#F5F6F7]">
-        <div className="h-8 w-8 animate-spin rounded-full border-2 border-[#E2E7EB] border-t-[#123F63]" />
-      </div>
+      <PageShell className="items-center justify-center">
+        <div className="h-8 w-8 animate-spin rounded-full border-2 border-line border-t-primary" />
+      </PageShell>
     );
   }
 
   if (!citizen) {
     return (
-      <div dir="rtl" className="flex min-h-screen items-center justify-center bg-[#F5F6F7] px-6 text-center">
-        <p className="text-sm font-semibold text-[#C0392B]">تعذر العثور على هذا المواطن</p>
-      </div>
+      <PageShell className="items-center justify-center px-6 text-center">
+        <p className="text-sm font-semibold text-danger">تعذر العثور على هذا المواطن</p>
+      </PageShell>
     );
   }
 
   return (
-    <div dir="rtl" className="min-h-screen bg-[#F5F6F7] pb-10 font-cairo">
-      <header className="flex items-center gap-3 bg-[#17212B] px-6 py-4">
-        <button onClick={() => navigate(-1)} aria-label="رجوع" className="text-white">
-          ←
-        </button>
-        <h1 className="text-base font-bold text-white">ملف المواطن</h1>
-      </header>
+    <PageShell className="pb-10">
+      <PageHeader title="ملف المواطن" tone="dark" />
 
       <main className="flex flex-col gap-4 px-6 py-5">
-        <section className="rounded-2xl border border-[#E2E7EB] bg-white p-5">
-          <p className="text-xs font-semibold text-[#687581]">الاسم الرباعي</p>
-          <p className="mt-1 text-base font-bold text-[#17212B]">{citizen.full_name}</p>
-          <div className="my-3 h-px bg-[#E2E7EB]" />
-          <p className="text-xs font-semibold text-[#687581]">رقم المعاش</p>
-          <p className="mt-1 text-base font-bold text-[#17212B]">{citizen.pension_number}</p>
-          <div className="my-3 h-px bg-[#E2E7EB]" />
-          <p className="text-xs font-semibold text-[#687581]">الحالة</p>
-          <p className="mt-1 text-base font-bold text-[#16803C]">
+        <section className="rounded-2xl border border-line bg-surface p-5 shadow-card">
+          <p className="text-xs font-semibold text-ink-soft">الاسم الرباعي</p>
+          <p className="mt-1 text-base font-bold text-ink">{citizen.full_name}</p>
+          <div className="my-3 h-px bg-line" />
+          <p className="text-xs font-semibold text-ink-soft">رقم المعاش</p>
+          <p className="mt-1 text-base font-bold tabular-nums text-ink">{citizen.pension_number}</p>
+          <div className="my-3 h-px bg-line" />
+          <p className="text-xs font-semibold text-ink-soft">الحالة</p>
+          <p className="mt-1 text-base font-bold text-success">
             {citizen.status === "active" ? "نشط" : citizen.status === "suspended" ? "موقوف" : "مؤرشف"}
           </p>
         </section>
 
         <section>
-          <h2 className="mb-2 text-sm font-bold text-[#17212B]">الإقرارات السنوية</h2>
+          <h2 className="mb-2 text-sm font-bold text-ink">الإقرارات السنوية</h2>
           {declarations.length === 0 ? (
-            <p className="text-[13px] font-medium text-[#9CA3AF]">لا توجد إقرارات مسجّلة</p>
+            <p className="text-[13px] font-medium text-ink-faint">لا توجد إقرارات مسجّلة</p>
           ) : (
             <div className="flex flex-col gap-2">
               {declarations.map((d) => (
-                <div key={d.id} className="rounded-xl border border-[#E2E7EB] bg-white p-3 text-[13px] font-semibold text-[#17212B]">
+                <div key={d.id} className="rounded-xl border border-line bg-surface p-3 text-[13px] font-semibold text-ink">
                   إقرار {d.declaration_year} — {d.status === "completed" ? "مكتمل" : "قيد التنفيذ"}
                 </div>
               ))}
@@ -146,13 +143,13 @@ export default function EmployeeCitizenDetailPage() {
         </section>
 
         <section>
-          <h2 className="mb-2 text-sm font-bold text-[#17212B]">المواعيد</h2>
+          <h2 className="mb-2 text-sm font-bold text-ink">المواعيد</h2>
           {appointments.length === 0 ? (
-            <p className="text-[13px] font-medium text-[#9CA3AF]">لا توجد مواعيد</p>
+            <p className="text-[13px] font-medium text-ink-faint">لا توجد مواعيد</p>
           ) : (
             <div className="flex flex-col gap-2">
               {appointments.map((a) => (
-                <div key={a.id} className="rounded-xl border border-[#E2E7EB] bg-white p-3 text-[13px] font-semibold text-[#17212B]">
+                <div key={a.id} className="rounded-xl border border-line bg-surface p-3 text-[13px] font-semibold tabular-nums text-ink">
                   {a.appointment_date} — {a.appointment_time}
                 </div>
               ))}
@@ -161,17 +158,17 @@ export default function EmployeeCitizenDetailPage() {
         </section>
 
         <section>
-          <h2 className="mb-2 text-sm font-bold text-[#17212B]">المعاملات</h2>
+          <h2 className="mb-2 text-sm font-bold text-ink">المعاملات</h2>
           {transactions.length === 0 ? (
-            <p className="text-[13px] font-medium text-[#9CA3AF]">لا توجد معاملات</p>
+            <p className="text-[13px] font-medium text-ink-faint">لا توجد معاملات</p>
           ) : (
             <div className="flex flex-col gap-2">
               {transactions.map((t) => (
                 <div
                   key={t.id}
-                  className="flex items-center justify-between rounded-xl border border-[#E2E7EB] bg-white p-3"
+                  className="flex items-center justify-between rounded-xl border border-line bg-surface p-3"
                 >
-                  <span className="text-[13px] font-semibold text-[#17212B]">
+                  <span className="text-[13px] font-semibold text-ink">
                     {t.transaction_types?.name_ar ?? "معاملة"}
                   </span>
                   <StatusBadge status={t.status as TransactionStatus} />
@@ -181,8 +178,8 @@ export default function EmployeeCitizenDetailPage() {
           )}
         </section>
 
-        <section className="rounded-2xl border border-[#E2E7EB] bg-white p-5">
-          <h2 className="mb-3 text-sm font-bold text-[#17212B]">إنشاء معاملة جديدة</h2>
+        <section className="rounded-2xl border border-line bg-surface p-5 shadow-card">
+          <h2 className="mb-3 text-sm font-bold text-ink">إنشاء معاملة جديدة</h2>
 
           <Select
             id="txnType"
@@ -193,7 +190,7 @@ export default function EmployeeCitizenDetailPage() {
             onChange={(e) => setSelectedTypeId(e.target.value)}
           />
 
-          <label htmlFor="notes" className="mb-1.5 mt-4 block text-sm font-semibold text-[#17212B]">
+          <label htmlFor="notes" className="mb-1.5 mt-4 block text-sm font-semibold text-ink">
             ملاحظات (اختياري)
           </label>
           <textarea
@@ -201,15 +198,15 @@ export default function EmployeeCitizenDetailPage() {
             value={notes}
             onChange={(e) => setNotes(e.target.value)}
             rows={3}
-            className="w-full rounded-xl border border-[#E2E7EB] p-3 text-sm font-medium text-[#17212B] outline-none focus:border-[#123F63]"
+            className="w-full rounded-xl border border-line bg-surface p-3 text-sm font-medium text-ink outline-none transition-colors focus:border-primary"
           />
 
           {feedback && (
             <div
               className={`mt-3 rounded-xl p-3 text-center text-[13px] font-semibold ${
                 feedback.type === "success"
-                  ? "bg-[#EAF7F0] text-[#16803C]"
-                  : "bg-[#FBEAE8] text-[#C0392B]"
+                  ? "bg-success-light text-success"
+                  : "bg-danger-light text-danger"
               }`}
             >
               {feedback.text}
@@ -226,6 +223,6 @@ export default function EmployeeCitizenDetailPage() {
           </Button>
         </section>
       </main>
-    </div>
+    </PageShell>
   );
 }
