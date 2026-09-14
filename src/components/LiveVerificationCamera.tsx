@@ -103,8 +103,8 @@ export function LiveVerificationCamera({
     <div dir="rtl" className="flex flex-col items-center gap-4">
       {state === "requesting_permission" && (
         <div className="flex flex-col items-center gap-3 py-10 text-center">
-          <div className="h-8 w-8 animate-spin rounded-full border-2 border-[#E5E7EB] border-t-[#0B3D66]" />
-          <p className="text-sm font-semibold text-[#1A1D21]">
+          <div className="h-8 w-8 animate-spin rounded-full border-2 border-[#E2E7EB] border-t-[#123F63]" />
+          <p className="text-sm font-semibold text-[#17212B]">
             يرجى السماح بالوصول إلى الكاميرا
           </p>
         </div>
@@ -118,12 +118,12 @@ export function LiveVerificationCamera({
           <p className="max-w-xs text-sm font-semibold text-[#C0392B]">
             لم يتم منح إذن الوصول إلى الكاميرا
           </p>
-          <p className="max-w-xs text-[13px] font-medium text-[#6B7280]">
+          <p className="max-w-xs text-[13px] font-medium text-[#687581]">
             يرجى تفعيل إذن الكاميرا من إعدادات المتصفح ثم إعادة المحاولة.
           </p>
           <button
             onClick={requestCameraAccess}
-            className="mt-2 text-sm font-bold text-[#0B3D66]"
+            className="mt-2 text-sm font-bold text-[#123F63]"
           >
             إعادة المحاولة
           </button>
@@ -138,7 +138,7 @@ export function LiveVerificationCamera({
           <p className="max-w-xs text-sm font-semibold text-[#B8860B]">
             تعذر العثور على كاميرا متاحة على هذا الجهاز
           </p>
-          <p className="max-w-xs text-[13px] font-medium text-[#6B7280]">
+          <p className="max-w-xs text-[13px] font-medium text-[#687581]">
             يرجى استخدام جهاز به كاميرا لإكمال التحقق.
           </p>
         </div>
@@ -156,12 +156,12 @@ export function LiveVerificationCamera({
             />
             <div className="pointer-events-none absolute inset-6 rounded-full border-2 border-white/70" />
           </div>
-          <p className="max-w-xs text-center text-[13px] font-medium text-[#6B7280]">
+          <p className="max-w-xs text-center text-[13px] font-medium text-[#687581]">
             ضع وجهك داخل الإطار الدائري بوضوح ثم اضغط "التقاط الصورة"
           </p>
           <button
             onClick={handleCapture}
-            className="h-12 w-full max-w-xs rounded-xl bg-[#0B3D66] text-base font-bold text-white transition-transform active:scale-[0.98]"
+            className="h-12 w-full max-w-xs rounded-xl bg-[#123F63] text-base font-bold text-white transition-transform active:scale-[0.98]"
           >
             التقاط الصورة
           </button>
@@ -176,13 +176,13 @@ export function LiveVerificationCamera({
           <div className="flex w-full max-w-xs gap-3">
             <button
               onClick={handleRetry}
-              className="h-12 flex-1 rounded-xl border border-[#E5E7EB] text-sm font-bold text-[#1A1D21]"
+              className="h-12 flex-1 rounded-xl border border-[#E2E7EB] text-sm font-bold text-[#17212B]"
             >
               إعادة الالتقاط
             </button>
             <button
               onClick={handleConfirmCapture}
-              className="h-12 flex-1 rounded-xl bg-[#0B3D66] text-sm font-bold text-white"
+              className="h-12 flex-1 rounded-xl bg-[#123F63] text-sm font-bold text-white"
             >
               تأكيد واستمرار
             </button>
@@ -192,11 +192,11 @@ export function LiveVerificationCamera({
 
       {state === "verifying" && (
         <div className="flex flex-col items-center gap-3 py-10 text-center">
-          <div className="h-10 w-10 animate-spin rounded-full border-[3px] border-[#E5E7EB] border-t-[#0B3D66]" />
-          <p className="text-sm font-semibold text-[#1A1D21]">
+          <div className="h-10 w-10 animate-spin rounded-full border-[3px] border-[#E2E7EB] border-t-[#123F63]" />
+          <p className="text-sm font-semibold text-[#17212B]">
             جارٍ التحقق من الهوية...
           </p>
-          <p className="text-[13px] font-medium text-[#6B7280]">
+          <p className="text-[13px] font-medium text-[#687581]">
             قد يستغرق هذا بضع ثوانٍ
           </p>
         </div>
@@ -204,10 +204,10 @@ export function LiveVerificationCamera({
 
       {state === "verified" && (
         <div className="flex flex-col items-center gap-3 py-10 text-center">
-          <div className="flex h-16 w-16 items-center justify-center rounded-full bg-[#EAF7F0] text-3xl text-[#16794F]">
+          <div className="flex h-16 w-16 items-center justify-center rounded-full bg-[#EAF7F0] text-3xl text-[#16803C]">
             ✓
           </div>
-          <p className="text-sm font-bold text-[#16794F]">تم التحقق من هويتك بنجاح</p>
+          <p className="text-sm font-bold text-[#16803C]">تم التحقق من هويتك بنجاح</p>
         </div>
       )}
 
@@ -221,7 +221,7 @@ export function LiveVerificationCamera({
           </p>
           <button
             onClick={handleRetry}
-            className="mt-2 h-12 w-full max-w-xs rounded-xl bg-[#0B3D66] text-sm font-bold text-white"
+            className="mt-2 h-12 w-full max-w-xs rounded-xl bg-[#123F63] text-sm font-bold text-white"
           >
             إعادة المحاولة
           </button>

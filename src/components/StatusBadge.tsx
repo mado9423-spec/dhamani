@@ -10,10 +10,10 @@ const STATUS_CONFIG: Record<
   { label: string; bg: string; text: string }
 > = {
   pending_review: { label: "قيد المراجعة", bg: "#FBF3E1", text: "#B8860B" },
-  accepted: { label: "مقبولة", bg: "#E8F0F7", text: "#0B3D66" },
+  accepted: { label: "مقبولة", bg: "#E8EEF4", text: "#123F63" },
   rejected: { label: "مرفوضة", bg: "#FBEAE8", text: "#C0392B" },
-  completed: { label: "مكتملة", bg: "#EAF7F0", text: "#16794F" },
-  suspended: { label: "معلقة", bg: "#F3F4F6", text: "#6B7280" },
+  completed: { label: "مكتملة", bg: "#EAF7F0", text: "#16803C" },
+  suspended: { label: "معلقة", bg: "#F3F4F6", text: "#687581" },
 };
 
 export function StatusBadge({ status }: { status: TransactionStatus }) {

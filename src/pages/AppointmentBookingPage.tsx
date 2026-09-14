@@ -73,7 +73,7 @@ export default function AppointmentBookingPage() {
 
   if (!config) {
     return (
-      <div dir="rtl" className="flex min-h-screen items-center justify-center bg-[#FAFBFC] px-6 text-center">
+      <div dir="rtl" className="flex min-h-screen items-center justify-center bg-[#F6F8FA] px-6 text-center">
         <p className="text-sm font-semibold text-[#C0392B]">نوع موعد غير معروف</p>
       </div>
     );
@@ -81,32 +81,32 @@ export default function AppointmentBookingPage() {
 
   if (isLoading) {
     return (
-      <div dir="rtl" className="flex min-h-screen items-center justify-center bg-[#FAFBFC]">
-        <div className="h-8 w-8 animate-spin rounded-full border-2 border-[#E5E7EB] border-t-[#0B3D66]" />
+      <div dir="rtl" className="flex min-h-screen items-center justify-center bg-[#F6F8FA]">
+        <div className="h-8 w-8 animate-spin rounded-full border-2 border-[#E2E7EB] border-t-[#123F63]" />
       </div>
     );
   }
 
   return (
-    <div dir="rtl" className="min-h-screen bg-[#FAFBFC] font-cairo">
-      <header className="flex items-center gap-3 border-b border-[#E5E7EB] px-6 py-4">
-        <button onClick={() => navigate(-1)} aria-label="رجوع" className="text-[#1A1D21]">
+    <div dir="rtl" className="min-h-screen bg-[#F6F8FA] font-cairo">
+      <header className="flex items-center gap-3 border-b border-[#E2E7EB] px-6 py-4">
+        <button onClick={() => navigate(-1)} aria-label="رجوع" className="text-[#17212B]">
           ←
         </button>
-        <h1 className="text-base font-bold text-[#1A1D21]">{config.title}</h1>
+        <h1 className="text-base font-bold text-[#17212B]">{config.title}</h1>
       </header>
 
       <main className="px-6 py-6">
         {isDone ? (
           <div className="flex flex-col items-center gap-3 pt-10 text-center">
-            <div className="flex h-16 w-16 items-center justify-center rounded-full bg-[#EAF7F0] text-3xl text-[#16794F]">
+            <div className="flex h-16 w-16 items-center justify-center rounded-full bg-[#EAF7F0] text-3xl text-[#16803C]">
               ✓
             </div>
-            <p className="text-lg font-extrabold text-[#1A1D21]">
+            <p className="text-lg font-extrabold text-[#17212B]">
               {config.successMessage}
             </p>
             {selectedSlot && (
-              <p className="text-sm font-semibold text-[#6B7280]">
+              <p className="text-sm font-semibold text-[#687581]">
                 {selectedSlot.label}
               </p>
             )}
@@ -116,7 +116,7 @@ export default function AppointmentBookingPage() {
           </div>
         ) : (
           <div className="flex flex-col gap-4">
-            <p className="text-sm font-semibold text-[#1A1D21]">اختر الموعد المناسب</p>
+            <p className="text-sm font-semibold text-[#17212B]">اختر الموعد المناسب</p>
 
             {errorMessage && (
               <div className="rounded-xl bg-[#FBEAE8] p-3 text-center text-[13px] font-semibold text-[#C0392B]">
@@ -131,8 +131,8 @@ export default function AppointmentBookingPage() {
                   onClick={() => setSelectedSlot(slot)}
                   className={`rounded-xl border p-3 text-right text-sm font-semibold transition-colors ${
                     selectedSlot?.date === slot.date && selectedSlot?.time === slot.time
-                      ? "border-[#0B3D66] bg-[#E8F0F7] text-[#0B3D66]"
-                      : "border-[#E5E7EB] bg-white text-[#1A1D21]"
+                      ? "border-[#123F63] bg-[#E8EEF4] text-[#123F63]"
+                      : "border-[#E2E7EB] bg-white text-[#17212B]"
                   }`}
                 >
                   {slot.label}

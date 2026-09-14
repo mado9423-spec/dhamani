@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import LoginPage from "./pages/LoginPage";
 import EmployeeLoginPage from "./pages/EmployeeLoginPage";
@@ -7,8 +8,15 @@ import AppointmentBookingPage from "./pages/AppointmentBookingPage";
 import TransactionsPage from "./pages/TransactionsPage";
 import EmployeeDashboardPage from "./pages/EmployeeDashboardPage";
 import EmployeeCitizenDetailPage from "./pages/EmployeeCitizenDetailPage";
+import { SplashScreen } from "./components/SplashScreen";
 
 export default function App() {
+  const [showSplash, setShowSplash] = useState(true);
+
+  if (showSplash) {
+    return <SplashScreen onFinish={() => setShowSplash(false)} />;
+  }
+
   return (
     <BrowserRouter>
       <Routes>

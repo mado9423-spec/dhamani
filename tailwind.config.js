@@ -8,9 +8,9 @@ export default {
       },
       colors: {
         primary: {
-          DEFAULT: "#0B3D66",
-          hover: "#092F4F",
-          light: "#E8F0F7",
+          DEFAULT: "#123F63",
+          hover: "#0B2D47",
+          light: "#E8EEF4",
         },
       },
     },

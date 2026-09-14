@@ -39,12 +39,12 @@ export default function EmployeeLoginPage() {
   return (
     <div
       dir="rtl"
-      className="flex min-h-screen flex-col items-center justify-center bg-[#1A1D21] px-6 font-cairo"
+      className="flex min-h-screen flex-col items-center justify-center bg-[#17212B] px-6 font-cairo"
     >
       <div className="w-full max-w-sm rounded-2xl bg-white p-8">
         <div className="mb-8 text-center">
-          <h1 className="text-xl font-bold text-[#1A1D21]">دخول الموظفين</h1>
-          <p className="mt-1 text-sm text-[#6B7280]">ضماني — لوحة الموظف</p>
+          <h1 className="text-xl font-bold text-[#17212B]">دخول الموظفين</h1>
+          <p className="mt-1 text-sm text-[#687581]">ضماني — لوحة الموظف</p>
         </div>
 
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">

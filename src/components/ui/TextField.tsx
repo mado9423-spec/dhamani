@@ -13,7 +13,7 @@ export const TextField = forwardRef<HTMLInputElement, TextFieldProps>(
       <div className="w-full">
         <label
           htmlFor={id}
-          className="mb-1.5 block text-sm font-semibold text-[#1A1D21]"
+          className="mb-1.5 block text-sm font-semibold text-[#17212B]"
         >
           {label}
         </label>
@@ -23,10 +23,10 @@ export const TextField = forwardRef<HTMLInputElement, TextFieldProps>(
           dir="rtl"
           aria-invalid={hasError}
           aria-describedby={hasError ? `${id}-error` : undefined}
-          className={`h-12 w-full rounded-xl border px-4 text-[15px] font-medium text-[#1A1D21] outline-none transition-colors placeholder:font-normal placeholder:text-gray-400 focus:ring-2 focus:ring-[#0B3D66]/20 ${
+          className={`h-12 w-full rounded-xl border px-4 text-[15px] font-medium text-[#17212B] outline-none transition-colors placeholder:font-normal placeholder:text-gray-400 focus:ring-2 focus:ring-[#123F63]/20 ${
             hasError
               ? "border-[#C0392B] focus:border-[#C0392B]"
-              : "border-[#E5E7EB] focus:border-[#0B3D66]"
+              : "border-[#E2E7EB] focus:border-[#123F63]"
           } ${className}`}
           {...rest}
         />

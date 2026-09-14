@@ -16,17 +16,17 @@ export function StepIndicator({ steps, currentStep }: StepIndicatorProps) {
               {index > 0 && (
                 <div
                   className={`h-[2px] flex-1 ${
-                    isCompleted || isCurrent ? "bg-[#0B3D66]" : "bg-[#E5E7EB]"
+                    isCompleted || isCurrent ? "bg-[#123F63]" : "bg-[#E2E7EB]"
                   }`}
                 />
               )}
               <div
                 className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[11px] font-bold ${
                   isCompleted
-                    ? "bg-[#0B3D66] text-white"
+                    ? "bg-[#123F63] text-white"
                     : isCurrent
-                      ? "border-2 border-[#0B3D66] text-[#0B3D66]"
-                      : "border-2 border-[#E5E7EB] text-[#9CA3AF]"
+                      ? "border-2 border-[#123F63] text-[#123F63]"
+                      : "border-2 border-[#E2E7EB] text-[#9CA3AF]"
                 }`}
               >
                 {isCompleted ? "✓" : index + 1}
@@ -34,14 +34,14 @@ export function StepIndicator({ steps, currentStep }: StepIndicatorProps) {
               {index < steps.length - 1 && (
                 <div
                   className={`h-[2px] flex-1 ${
-                    isCompleted ? "bg-[#0B3D66]" : "bg-[#E5E7EB]"
+                    isCompleted ? "bg-[#123F63]" : "bg-[#E2E7EB]"
                   }`}
                 />
               )}
             </div>
             <span
               className={`text-center text-[10px] font-semibold leading-tight ${
-                isCurrent ? "text-[#0B3D66]" : "text-[#9CA3AF]"
+                isCurrent ? "text-[#123F63]" : "text-[#9CA3AF]"
               }`}
             >
               {label}

@@ -28,12 +28,12 @@ export default function TransactionsPage() {
     : transactions;
 
   return (
-    <div dir="rtl" className="min-h-screen bg-[#FAFBFC] pb-24 font-cairo">
-      <header className="flex items-center gap-3 border-b border-[#E5E7EB] px-6 py-4">
-        <button onClick={() => navigate(-1)} aria-label="رجوع" className="text-[#1A1D21]">
+    <div dir="rtl" className="min-h-screen bg-[#F6F8FA] pb-24 font-cairo">
+      <header className="flex items-center gap-3 border-b border-[#E2E7EB] px-6 py-4">
+        <button onClick={() => navigate(-1)} aria-label="رجوع" className="text-[#17212B]">
           ←
         </button>
-        <h1 className="text-base font-bold text-[#1A1D21]">
+        <h1 className="text-base font-bold text-[#17212B]">
           {isMilitaryOnly ? "معاملات التقاعد العسكري" : "متابعة المعاملات"}
         </h1>
       </header>
@@ -42,18 +42,18 @@ export default function TransactionsPage() {
         {isLoading && (
           <div className="flex flex-col gap-3">
             {[1, 2, 3].map((i) => (
-              <div key={i} className="h-24 animate-pulse rounded-2xl bg-[#E5E7EB]" />
+              <div key={i} className="h-24 animate-pulse rounded-2xl bg-[#E2E7EB]" />
             ))}
           </div>
         )}
 
         {!isLoading && visibleTransactions.length === 0 && (
           <div className="flex flex-col items-center gap-2 pt-16 text-center">
-            <div className="flex h-14 w-14 items-center justify-center rounded-full bg-[#E8F0F7] text-2xl">
+            <div className="flex h-14 w-14 items-center justify-center rounded-full bg-[#E8EEF4] text-2xl">
               📄
             </div>
-            <p className="text-sm font-bold text-[#1A1D21]">لا توجد معاملات حتى الآن</p>
-            <p className="max-w-xs text-[13px] font-medium text-[#6B7280]">
+            <p className="text-sm font-bold text-[#17212B]">لا توجد معاملات حتى الآن</p>
+            <p className="max-w-xs text-[13px] font-medium text-[#687581]">
               ستظهر هنا أي معاملة يفتحها لك موظف الفرع.
             </p>
           </div>
@@ -64,12 +64,12 @@ export default function TransactionsPage() {
             {visibleTransactions.map((t) => (
               <div
                 key={t.id}
-                className="flex flex-col gap-2 rounded-2xl border border-[#E5E7EB] bg-white p-4"
+                className="flex flex-col gap-2 rounded-2xl border border-[#E2E7EB] bg-white p-4"
               >
                 <div className="flex items-start justify-between">
                   <div>
-                    <p className="text-sm font-bold text-[#1A1D21]">{t.typeName}</p>
-                    <p className="mt-0.5 text-[12px] font-medium text-[#6B7280]">
+                    <p className="text-sm font-bold text-[#17212B]">{t.typeName}</p>
+                    <p className="mt-0.5 text-[12px] font-medium text-[#687581]">
                       رقم المعاملة: {t.transactionNumber}
                     </p>
                   </div>

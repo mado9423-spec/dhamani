@@ -44,7 +44,7 @@ export default function EmployeeDashboardPage() {
 
   if (isLoadingEmployee) {
     return (
-      <div dir="rtl" className="flex min-h-screen items-center justify-center bg-[#1A1D21]">
+      <div dir="rtl" className="flex min-h-screen items-center justify-center bg-[#17212B]">
         <div className="h-8 w-8 animate-spin rounded-full border-2 border-white/20 border-t-white" />
       </div>
     );
@@ -52,7 +52,7 @@ export default function EmployeeDashboardPage() {
 
   return (
     <div dir="rtl" className="min-h-screen bg-[#F5F6F7] font-cairo">
-      <header className="bg-[#1A1D21] px-6 py-5">
+      <header className="bg-[#17212B] px-6 py-5">
         <p className="text-xs font-semibold text-white/60">لوحة الموظف</p>
         <h1 className="mt-1 text-lg font-bold text-white">
           {employee?.fullName}
@@ -88,12 +88,12 @@ export default function EmployeeDashboardPage() {
         )}
 
         {result && (
-          <div className="mt-6 rounded-2xl border border-[#E5E7EB] bg-white p-5">
-            <p className="text-xs font-semibold text-[#6B7280]">الاسم الرباعي</p>
-            <p className="mt-1 text-base font-bold text-[#1A1D21]">{result.fullName}</p>
-            <div className="my-3 h-px bg-[#E5E7EB]" />
-            <p className="text-xs font-semibold text-[#6B7280]">رقم المعاش</p>
-            <p className="mt-1 text-base font-bold text-[#1A1D21]">{result.pensionNumber}</p>
+          <div className="mt-6 rounded-2xl border border-[#E2E7EB] bg-white p-5">
+            <p className="text-xs font-semibold text-[#687581]">الاسم الرباعي</p>
+            <p className="mt-1 text-base font-bold text-[#17212B]">{result.fullName}</p>
+            <div className="my-3 h-px bg-[#E2E7EB]" />
+            <p className="text-xs font-semibold text-[#687581]">رقم المعاش</p>
+            <p className="mt-1 text-base font-bold text-[#17212B]">{result.pensionNumber}</p>
 
             <Button
               onClick={() => navigate(`/employee/citizens/${result.id}`)}

@@ -19,10 +19,10 @@ export function Button({
 
   const variants: Record<string, string> = {
     primary:
-      "bg-[#0B3D66] text-white hover:bg-[#092F4F] disabled:bg-gray-300 disabled:text-gray-500",
+      "bg-[#123F63] text-white hover:bg-[#0B2D47] disabled:bg-gray-300 disabled:text-gray-500",
     secondary:
-      "bg-white text-[#0B3D66] border border-[#0B3D66] hover:bg-[#E8F0F7]",
-    ghost: "bg-transparent text-[#0B3D66] hover:bg-[#E8F0F7]",
+      "bg-white text-[#123F63] border border-[#123F63] hover:bg-[#E8EEF4]",
+    ghost: "bg-transparent text-[#123F63] hover:bg-[#E8EEF4]",
   };
 
   return (
