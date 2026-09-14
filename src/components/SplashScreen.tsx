@@ -25,12 +25,24 @@ export function SplashScreen({ onFinish }: SplashScreenProps) {
     >
       <div
         dir="rtl"
-        className="flex w-full max-w-[480px] flex-col items-center justify-center bg-page font-cairo md:border-x md:border-black/[0.04] md:shadow-shell"
+        className="relative flex w-full max-w-[480px] flex-col items-center justify-center overflow-hidden bg-gradient-to-br from-primary-dark via-primary to-primary-bright font-cairo md:border-x md:border-black/[0.04] md:shadow-shell"
       >
-        <Logo size="lg" />
-        <p className="mt-5 text-base font-bold text-ink">تطبيق توثيق المعلومات</p>
-        <p className="mt-1 text-sm font-medium text-ink-soft">صندوق الضمان الاجتماعي</p>
-        <div className="mt-6 h-[3px] w-10 rounded-full bg-accent" />
+        <div className="pointer-events-none absolute -left-16 top-10 h-56 w-56 rounded-full bg-white/5 blur-3xl" />
+        <div className="pointer-events-none absolute -right-10 bottom-10 h-48 w-48 rounded-full bg-accent/20 blur-3xl" />
+
+        <div className="relative animate-scale-in">
+          <Logo size="lg" />
+        </div>
+        <p className="relative mt-5 animate-rise-in text-base font-bold text-white" style={{ animationDelay: "150ms" }}>
+          تطبيق توثيق المعلومات
+        </p>
+        <p className="relative mt-1 animate-rise-in text-sm font-medium text-white/70" style={{ animationDelay: "220ms" }}>
+          صندوق الضمان الاجتماعي
+        </p>
+        <div
+          className="relative mt-6 h-[3px] w-10 animate-rise-in rounded-full bg-accent"
+          style={{ animationDelay: "300ms" }}
+        />
       </div>
     </div>
   );

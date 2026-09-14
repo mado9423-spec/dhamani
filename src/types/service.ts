@@ -18,6 +18,8 @@ export type ServiceId =
   | "profile"
   | "notifications";
 
+export type ServiceAccent = "violet" | "teal" | "rose" | "cyan" | "accent" | "success";
+
 export interface ServiceItem {
   id: ServiceId;
   title: string;
@@ -26,4 +28,5 @@ export interface ServiceItem {
   path: string;
   featured?: boolean;
   fullWidth?: boolean;
+  accent?: ServiceAccent;
 }

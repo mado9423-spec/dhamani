@@ -12,6 +12,7 @@ export default {
         "primary-hover": "#0B2D47",
         "primary-dark": "#0A2436",
         "primary-light": "#E8EEF4",
+        "primary-bright": "#2E6DA4",
         // Warm gold — the single accent, reused for "pending" states
         accent: "#B0820F",
         "accent-light": "#FBF3E1",
@@ -20,6 +21,15 @@ export default {
         "success-light": "#EAF7F0",
         danger: "#C0392B",
         "danger-light": "#FBEAE8",
+        // Service category colors — one restrained, cohesive fintech palette
+        violet: "#6D5AE0",
+        "violet-light": "#EFECFC",
+        teal: "#0E9C97",
+        "teal-light": "#E1F5F3",
+        rose: "#DD5C82",
+        "rose-light": "#FCEBF1",
+        cyan: "#1596C7",
+        "cyan-light": "#E4F3FA",
         // Neutrals — one warm-gray family, one source of truth
         ink: "#16202B",
         "ink-soft": "#5B6875",
@@ -35,6 +45,25 @@ export default {
         card: "0 1px 2px 0 rgba(18, 63, 99, 0.04), 0 1px 1px 0 rgba(18, 63, 99, 0.03)",
         raised: "0 12px 24px -8px rgba(18, 63, 99, 0.18)",
         shell: "0 24px 60px -20px rgba(10, 36, 54, 0.28)",
+      },
+      keyframes: {
+        "rise-in": {
+          "0%": { opacity: "0", transform: "translateY(10px)" },
+          "100%": { opacity: "1", transform: "translateY(0)" },
+        },
+        "scale-in": {
+          "0%": { opacity: "0", transform: "scale(0.92)" },
+          "100%": { opacity: "1", transform: "scale(1)" },
+        },
+        shimmer: {
+          "0%": { backgroundPosition: "-200% 0" },
+          "100%": { backgroundPosition: "200% 0" },
+        },
+      },
+      animation: {
+        "rise-in": "rise-in 0.5s cubic-bezier(0.16, 1, 0.3, 1) both",
+        "scale-in": "scale-in 0.4s cubic-bezier(0.16, 1, 0.3, 1) both",
+        shimmer: "shimmer 2.5s linear infinite",
       },
     },
   },

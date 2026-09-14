@@ -19,7 +19,7 @@ export function Button({
 
   const variants: Record<string, string> = {
     primary:
-      "bg-primary text-white shadow-card hover:bg-primary-hover disabled:bg-line disabled:text-ink-faint disabled:shadow-none",
+      "bg-gradient-to-l from-primary to-primary-bright text-white shadow-card hover:brightness-110 disabled:bg-none disabled:bg-line disabled:text-ink-faint disabled:shadow-none",
     secondary:
       "bg-white text-primary border border-primary/25 hover:border-primary hover:bg-primary-light",
     ghost: "bg-transparent text-primary hover:bg-primary-light",

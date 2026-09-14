@@ -29,6 +29,7 @@ const services: ServiceItem[] = [
     description: "تتبع حالة معاملاتك",
     icon: "list-check",
     path: "/transactions",
+    accent: "teal",
   },
   {
     id: "declaration_appointment",
@@ -36,6 +37,7 @@ const services: ServiceItem[] = [
     description: "احجز موعداً بالفرع",
     icon: "calendar",
     path: "/appointments/declaration",
+    accent: "violet",
   },
   {
     id: "advance_appointment",
@@ -43,6 +45,7 @@ const services: ServiceItem[] = [
     description: "حجز موعد استلام السلفة",
     icon: "cash",
     path: "/appointments/advance",
+    accent: "success",
   },
   {
     id: "new_pension_appointment",
@@ -50,6 +53,7 @@ const services: ServiceItem[] = [
     description: "حجز موعد أول صرف",
     icon: "calendar-plus",
     path: "/appointments/new-pension",
+    accent: "rose",
   },
   {
     id: "profile",
@@ -57,6 +61,7 @@ const services: ServiceItem[] = [
     description: "بياناتك الشخصية",
     icon: "user",
     path: "/profile",
+    accent: "cyan",
   },
   {
     id: "military_transactions",
@@ -64,6 +69,7 @@ const services: ServiceItem[] = [
     description: "خدمات المتقاعدين العسكريين",
     icon: "shield-check",
     path: "/transactions/military",
+    accent: "accent",
   },
 ];
 
@@ -88,16 +94,19 @@ export default function HomePage() {
 
   return (
     <PageShell className="pb-24">
-      <header className="border-b border-line-soft bg-surface px-6 pb-5 pt-8">
-        <div className="mb-5 flex items-center gap-2">
+      <header className="relative overflow-hidden bg-gradient-to-br from-primary-dark via-primary to-primary-bright px-6 pb-7 pt-8">
+        <div className="pointer-events-none absolute -left-10 -top-16 h-40 w-40 rounded-full bg-white/10 blur-2xl" />
+        <div className="pointer-events-none absolute -right-6 bottom-0 h-28 w-28 rounded-full bg-accent/20 blur-xl" />
+
+        <div className="relative mb-5 flex items-center gap-2">
           <Logo size="sm" />
-          <span className="text-sm font-bold text-primary">
+          <span className="text-sm font-bold text-white">
             صندوق الضمان الاجتماعي
           </span>
         </div>
 
         <p
-          className={`text-sm font-medium text-ink-soft transition-opacity duration-500 ${
+          className={`relative text-sm font-medium text-white/70 transition-opacity duration-500 ${
             showGreeting ? "opacity-100" : "h-0 opacity-0"
           }`}
         >
@@ -105,24 +114,38 @@ export default function HomePage() {
         </p>
 
         {isLoading ? (
-          <div className="mt-1 h-7 w-40 animate-pulse rounded-md bg-line" />
+          <div className="relative mt-1 h-7 w-40 animate-pulse rounded-md bg-white/15" />
         ) : (
           <>
-            <h1 className="mt-1 text-xl font-extrabold tracking-tight text-ink">
+            <h1 className="relative mt-1 text-xl font-extrabold tracking-tight text-white">
               {citizen?.fullName ?? "مواطن"}
             </h1>
-            <div className="mt-2 h-[3px] w-10 rounded-full bg-accent" />
+            <div className="relative mt-2 h-[3px] w-10 rounded-full bg-accent" />
           </>
         )}
       </header>
 
       <main className="flex flex-col gap-3 px-6 pt-6">
-        {featuredService && <ServiceCard service={featuredService} />}
-        {fullWidthService && <ServiceCard service={fullWidthService} />}
+        {featuredService && (
+          <div className="animate-rise-in" style={{ animationDelay: "50ms" }}>
+            <ServiceCard service={featuredService} />
+          </div>
+        )}
+        {fullWidthService && (
+          <div className="animate-rise-in" style={{ animationDelay: "100ms" }}>
+            <ServiceCard service={fullWidthService} />
+          </div>
+        )}
 
         <div className="mt-1 grid grid-cols-2 gap-3">
-          {gridServices.map((service) => (
-            <ServiceCard key={service.id} service={service} />
+          {gridServices.map((service, index) => (
+            <div
+              key={service.id}
+              className="animate-rise-in"
+              style={{ animationDelay: `${150 + index * 60}ms` }}
+            >
+              <ServiceCard service={service} />
+            </div>
           ))}
         </div>
       </main>

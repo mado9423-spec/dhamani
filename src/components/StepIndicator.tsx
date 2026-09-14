@@ -15,17 +15,19 @@ export function StepIndicator({ steps, currentStep }: StepIndicatorProps) {
             <div className="flex w-full items-center">
               {index > 0 && (
                 <div
-                  className={`h-[2px] flex-1 transition-colors duration-300 ${
-                    isCompleted || isCurrent ? "bg-primary" : "bg-line"
+                  className={`h-[3px] flex-1 rounded-full transition-all duration-500 ${
+                    isCompleted || isCurrent
+                      ? "bg-gradient-to-l from-primary to-primary-bright"
+                      : "bg-line"
                   }`}
                 />
               )}
               <div
-                className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[11px] font-bold transition-colors duration-300 ${
+                className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-[11px] font-bold transition-all duration-300 ${
                   isCompleted
-                    ? "bg-primary text-white"
+                    ? "bg-gradient-to-br from-primary to-primary-bright text-white shadow-card"
                     : isCurrent
-                      ? "border-2 border-primary text-primary"
+                      ? "scale-110 border-2 border-primary text-primary shadow-card"
                       : "border-2 border-line text-ink-faint"
                 }`}
               >
@@ -33,8 +35,10 @@ export function StepIndicator({ steps, currentStep }: StepIndicatorProps) {
               </div>
               {index < steps.length - 1 && (
                 <div
-                  className={`h-[2px] flex-1 transition-colors duration-300 ${
-                    isCompleted ? "bg-primary" : "bg-line"
+                  className={`h-[3px] flex-1 rounded-full transition-all duration-500 ${
+                    isCompleted
+                      ? "bg-gradient-to-l from-primary to-primary-bright"
+                      : "bg-line"
                   }`}
                 />
               )}

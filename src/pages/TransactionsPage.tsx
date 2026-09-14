@@ -55,10 +55,11 @@ export default function TransactionsPage() {
 
         {!isLoading && visibleTransactions.length > 0 && (
           <div className="flex flex-col gap-3">
-            {visibleTransactions.map((t) => (
+            {visibleTransactions.map((t, index) => (
               <div
                 key={t.id}
-                className="flex flex-col gap-2 rounded-2xl border border-line bg-surface p-4 shadow-card"
+                className="flex animate-rise-in flex-col gap-2 rounded-2xl border border-line bg-surface p-4 shadow-card"
+                style={{ animationDelay: `${index * 60}ms` }}
               >
                 <div className="flex items-start justify-between gap-2">
                   <div className="min-w-0">

@@ -14,7 +14,9 @@ export function PageHeader({ title, tone = "light" }: PageHeaderProps) {
   return (
     <header
       className={`flex items-center gap-3 px-5 py-4 ${
-        isDark ? "bg-primary-dark" : "border-b border-line bg-surface"
+        isDark
+          ? "bg-gradient-to-l from-primary-dark to-primary"
+          : "border-b border-line bg-surface"
       }`}
     >
       <button

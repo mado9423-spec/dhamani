@@ -179,7 +179,7 @@ export default function DeclarationPage() {
 
         {step === 4 && (
           <div className="flex flex-col items-center gap-3 pt-10 text-center">
-            <div className="flex h-16 w-16 items-center justify-center rounded-full bg-success-light text-3xl text-success">
+            <div className="flex h-16 w-16 animate-scale-in items-center justify-center rounded-full bg-success-light text-3xl text-success">
               ✓
             </div>
             <p className="text-lg font-extrabold text-ink">

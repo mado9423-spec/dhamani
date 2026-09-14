@@ -39,8 +39,11 @@ export default function EmployeeLoginPage() {
   }
 
   return (
-    <PageShell bg="bg-primary-dark" className="items-center justify-center px-6">
-      <div className="flex flex-col items-center">
+    <PageShell
+      bg="bg-gradient-to-br from-primary-dark via-primary-dark to-primary"
+      className="items-center justify-center px-6"
+    >
+      <div className="flex flex-col items-center animate-rise-in">
         <Logo size="md" className="mb-6" />
         <div className="w-full max-w-sm rounded-2xl bg-white p-8 shadow-raised">
           <div className="mb-8 text-center">

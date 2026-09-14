@@ -45,7 +45,10 @@ export default function EmployeeDashboardPage() {
 
   if (isLoadingEmployee) {
     return (
-      <PageShell bg="bg-primary-dark" className="items-center justify-center">
+      <PageShell
+        bg="bg-gradient-to-br from-primary-dark via-primary-dark to-primary"
+        className="items-center justify-center"
+      >
         <div className="h-8 w-8 animate-spin rounded-full border-2 border-white/20 border-t-white" />
       </PageShell>
     );
@@ -53,7 +56,7 @@ export default function EmployeeDashboardPage() {
 
   return (
     <PageShell>
-      <header className="bg-primary-dark px-6 py-6">
+      <header className="bg-gradient-to-br from-primary-dark via-primary-dark to-primary px-6 py-6">
         <p className="text-xs font-semibold uppercase tracking-wide text-white/50">لوحة الموظف</p>
         <h1 className="mt-1.5 text-lg font-bold text-white">
           {employee?.fullName}
