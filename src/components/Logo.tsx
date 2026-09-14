@@ -1,5 +1,3 @@
-import logoSrc from "../assets/logo/logo.png";
-
 interface LogoProps {
   size?: "sm" | "md" | "lg";
   className?: string;
@@ -16,7 +14,7 @@ export function Logo({ size = "md", className = "", decorative = false }: LogoPr
   const px = SIZE_MAP[size];
   return (
     <img
-      src={logoSrc}
+      src="/logo.png"
       alt={decorative ? "" : "شعار صندوق الضمان الاجتماعي"}
       width={px}
       height={px}
