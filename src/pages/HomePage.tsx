@@ -14,6 +14,21 @@ const services: ServiceItem[] = [
     featured: true,
   },
   {
+    id: "notifications",
+    title: "الإشعارات",
+    description: "آخر التحديثات على حسابك",
+    icon: "bell",
+    path: "/notifications",
+    fullWidth: true,
+  },
+  {
+    id: "transactions",
+    title: "متابعة المعاملات",
+    description: "تتبع حالة معاملاتك",
+    icon: "list-check",
+    path: "/transactions",
+  },
+  {
     id: "declaration_appointment",
     title: "تحديد موعد الإقرار",
     description: "احجز موعداً بالفرع",
@@ -35,20 +50,6 @@ const services: ServiceItem[] = [
     path: "/appointments/new-pension",
   },
   {
-    id: "transactions",
-    title: "متابعة المعاملات",
-    description: "تتبع حالة معاملاتك",
-    icon: "list-check",
-    path: "/transactions",
-  },
-  {
-    id: "military_transactions",
-    title: "معاملات التقاعد العسكري",
-    description: "خدمات خاصة بالمتقاعدين العسكريين",
-    icon: "shield",
-    path: "/transactions/military",
-  },
-  {
     id: "profile",
     title: "الملف الشخصي",
     description: "بياناتك الشخصية",
@@ -56,11 +57,11 @@ const services: ServiceItem[] = [
     path: "/profile",
   },
   {
-    id: "notifications",
-    title: "الإشعارات",
-    description: "آخر التحديثات على حسابك",
-    icon: "bell",
-    path: "/notifications",
+    id: "military_transactions",
+    title: "معاملات التقاعد العسكري",
+    description: "خدمات المتقاعدين العسكريين",
+    icon: "shield-check",
+    path: "/transactions/military",
   },
 ];
 
@@ -80,11 +81,12 @@ export default function HomePage() {
   }, []);
 
   const featuredService = services.find((s) => s.featured);
-  const otherServices = services.filter((s) => !s.featured);
+  const fullWidthService = services.find((s) => s.fullWidth);
+  const gridServices = services.filter((s) => !s.featured && !s.fullWidth);
 
   return (
-    <div dir="rtl" className="min-h-screen bg-[#FAFBFC] pb-24 font-cairo">
-      <header className="px-6 pt-8 pb-4">
+    <div dir="rtl" className="min-h-screen bg-[#F3F5F8] pb-24 font-cairo">
+      <header className="bg-[#FAFBFC] px-6 pb-5 pt-8 shadow-[0_1px_0_0_#E5E7EB]">
         <p
           className={`text-sm font-medium text-[#6B7280] transition-opacity duration-500 ${
             showGreeting ? "opacity-100" : "h-0 opacity-0"
@@ -96,17 +98,21 @@ export default function HomePage() {
         {isLoading ? (
           <div className="mt-1 h-7 w-40 animate-pulse rounded-md bg-[#E5E7EB]" />
         ) : (
-          <h1 className="mt-1 text-xl font-extrabold text-[#1A1D21]">
-            {citizen?.fullName ?? "مواطن"}
-          </h1>
+          <>
+            <h1 className="mt-1 text-xl font-extrabold text-[#1A1D21]">
+              {citizen?.fullName ?? "مواطن"}
+            </h1>
+            <div className="mt-2 h-[3px] w-10 rounded-full bg-[#B8860B]" />
+          </>
         )}
       </header>
 
-      <main className="flex flex-col gap-3 px-6">
+      <main className="flex flex-col gap-3 px-6 pt-5">
         {featuredService && <ServiceCard service={featuredService} />}
+        {fullWidthService && <ServiceCard service={fullWidthService} />}
 
         <div className="mt-1 grid grid-cols-2 gap-3">
-          {otherServices.map((service) => (
+          {gridServices.map((service) => (
             <ServiceCard key={service.id} service={service} />
           ))}
         </div>

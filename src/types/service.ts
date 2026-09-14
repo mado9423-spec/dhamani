@@ -1,3 +1,5 @@
+import { IconName } from "../components/Icons";
+
 export interface CitizenProfile {
   id: string;
   fullName: string;
@@ -20,7 +22,8 @@ export interface ServiceItem {
   id: ServiceId;
   title: string;
   description: string;
-  icon: string;
+  icon: IconName;
   path: string;
   featured?: boolean;
+  fullWidth?: boolean;
 }
