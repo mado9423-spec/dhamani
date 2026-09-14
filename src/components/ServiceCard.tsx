@@ -5,104 +5,34 @@ interface ServiceCardProps {
   service: ServiceItem;
 }
 
-export function
-cat > 'src/components/LiveVerificationCamera.tsx' << 'DHAMANI_EOF'
-import { useEffect, useRef, useState } from "react";
-import { verifyLiveImage } from "../services/verification.service";
+export function ServiceCard({ service }: ServiceCardProps) {
+  const navigate = useNavigate();
 
-type CameraState =
-  | "requesting_permission"
-  | "permission_denied"
-  | "no_camera"
-  | "ready"
-  | "captured"
-  | "verifying"
-  | "verified"
-  | "verification_failed";
-
-interface LiveVerificationCameraProps {
-  citizenId: string;
-  onVerified: () => void;
-}
-
-export function LiveVerificationCamera({
-  citizenId,
-  onVerified,
-}: LiveVerificationCameraProps) {
-  const videoRef = useRef<HTMLVideoElement>(null);
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const streamRef = useRef<MediaStream | null>(null);
-
-  const [state, setState] = useState<CameraState>("requesting_permission");
-  const [capturedImage, setCapturedImage] = useState<string | null>(null);
-
-  useEffect(() => {
-    startCamera();
-    return () => stopCamera();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  async function startCamera() {
-    setState("requesting_permission");
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: "user" },
-        audio: false,
-      });
-      streamRef.current = stream;
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream;
-      }
-      setState("ready");
-    } catch (err: any) {
-      if (err?.name === "NotFoundError" || err?.name === "OverconstrainedError") {
-        setState("no_camera");
-      } else {
-cat > 'src/components/ui/Button.tsx' << 'DHAMANI_EOF'
-import { ButtonHTMLAttributes, ReactNode } from "react";
-
-interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
-  children: ReactNode;
-  isLoading?: boolean;
-  variant?: "primary" | "secondary" | "ghost";
-}
-
-export function Button({
-  children,
-  isLoading = false,
-  variant = "primary",
-  disabled,
-  className = "",
-  ...rest
-}: ButtonProps) {
-  const base =
-    "h-12 w-full rounded-xl font-bold text-base transition-all duration-200 flex items-center justify-center gap-2 active:scale-[0.98] disabled:cursor-not-allowed";
-
-  const variants: Record<string, string> = {
-    primary:
-      "bg-[#0B3D66] text-white hover:bg-[#092F4F] disabled:bg-gray-300 disabled:text-gray-500",
-    secondary:
-      "bg-white text-[#0B3D66] border border-[#0B3D66] hover:bg-[#E8F0F7]",
-    ghost: "bg-transparent text-[#0B3D66] hover:bg-[#E8F0F7]",
-  };
+  if (service.featured) {
+    return (
+      <button
+        onClick={() => navigate(service.path)}
+        className="flex w-full flex-col items-start gap-1 rounded-2xl bg-[#0B3D66] p-5 text-right transition-transform active:scale-[0.98]"
+      >
+        <span className="text-base font-bold text-white">{service.title}</span>
+        <span className="text-sm font-medium text-white/70">
+          {service.description}
+        </span>
+      </button>
+    );
+  }
 
   return (
     <button
-      disabled={disabled || isLoading}
-      className={`${base} ${variants[variant]} ${className}`}
-      {...rest}
+      onClick={() => navigate(service.path)}
+      className="flex flex-col items-start gap-2 rounded-2xl border border-[#E5E7EB] bg-white p-4 text-right transition-colors active:bg-[#F5F6F7]"
     >
-      {isLoading ? (
-        <>
-          <span
-            className="h-4 w-4 rounded-full border-2 border-white/40 border-t-white animate-spin"
-            aria-hidden="true"
-          />
-          <span>جارٍ التحقق...</span>
-        </>
-      ) : (
-        children
-      )}
+      <span className="text-sm font-semibold text-[#1A1D21]">
+        {service.title}
+      </span>
+      <span className="text-[13px] font-medium text-[#6B7280]">
+        {service.description}
+      </span>
     </button>
   );
 }

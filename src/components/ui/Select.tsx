@@ -19,61 +19,46 @@ export const Select = forwardRef<HTMLSelectElement, SelectProps>(
     return (
       <div className="w-full">
         <label
-mkdir -p 'src/services'
-cat > 'src/services/appointment.service.ts' << 'DHAMANI_EOF'
-import { supabase } from "../lib/supabaseClient";
-import { AppointmentSlot } from "./declaration.service";
+          htmlFor={id}
+          className="mb-1.5 block text-sm font-semibold text-[#1A1D21]"
+        >
+          {label}
+        </label>
+        <select
+          ref={ref}
+          id={id}
+          dir="rtl"
+          aria-invalid={hasError}
+          aria-describedby={hasError ? `${id}-error` : undefined}
+          defaultValue=""
+          className={`h-12 w-full rounded-xl border bg-white px-4 text-[15px] font-medium text-[#1A1D21] outline-none transition-colors focus:ring-2 focus:ring-[#0B3D66]/20 ${
+            hasError
+              ? "border-[#C0392B] focus:border-[#C0392B]"
+              : "border-[#E5E7EB] focus:border-[#0B3D66]"
+          } ${className}`}
+          {...rest}
+        >
+          <option value="" disabled>
+            {placeholder}
+          </option>
+          {options.map((opt) => (
+            <option key={opt.value} value={opt.value}>
+              {opt.label}
+            </option>
+          ))}
+        </select>
+        {hasError && (
+          <p
+            id={`${id}-error`}
+            role="alert"
+            className="mt-1.5 text-[13px] text-[#C0392B]"
+          >
+            {errorMessage}
+          </p>
+        )}
+      </div>
+    );
+  }
+);
 
-export type AppointmentType =
-  | "annual_declaration"
-  | "advance_disbursement"
-  | "new_pension_disbursement"
-  | "general";
-
-export interface AppointmentRecord {
-  id: string;
-  appointmentType: AppointmentType;
-  appointmentDate: string;
-  appointmentTime: string;
-  status: "scheduled" | "completed" | "cancelled" | "no_show";
-}
-
-export async function createAppointment(
-  citizenId: string,
-  branchId: string,
-  appointmentType: AppointmentType,
-  slot: AppointmentSlot
-): Promise<{ id: string } | null> {
-  const { data, error } = await supabase
-    .from("appointments")
-    .insert({
-      citizen_id: citizenId,
-      branch_id: branchId,
-      appointment_type: appointmentType,
-      appointment_date: slot.date,
-      appointment_time: slot.time,
-      status: "scheduled",
-    })
-    .select("id")
-    .single();
-
-  if (error || !data) return null;
-  return { id: data.id };
-}
-
-export async function listMyAppointments(): Promise<AppointmentRecord[]> {
-  const { data, error } = await supabase
-    .from("appointments")
-    .select("id, appointment_type, appointment_date, appointment_time, status")
-    .order("appointment_date", { ascending: false });
-
-  if (error || !data) return [];
-
-  return data.map((row) => ({
-    id: row.id,
-    appointmentType: row.appointment_type,
-    appointmentDate: row.appointment_date,
-    appointmentTime: row.appointment_time,
-    status: row.status,
-  }));
-}
+Select.displayName = "Select";
