@@ -28,12 +28,19 @@ export function LiveVerificationCamera({
   const [capturedImage, setCapturedImage] = useState<string | null>(null);
 
   useEffect(() => {
-    startCamera();
+    requestCameraAccess();
     return () => stopCamera();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  async function startCamera() {
+  // يربط البث بعنصر الفيديو فقط بعد أن يظهر فعلياً في الصفحة (state === "ready")
+  useEffect(() => {
+    if (state === "ready" && videoRef.current && streamRef.current) {
+      videoRef.current.srcObject = streamRef.current;
+    }
+  }, [state]);
+
+  async function requestCameraAccess() {
     setState("requesting_permission");
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
@@ -41,9 +48,6 @@ export function LiveVerificationCamera({
         audio: false,
       });
       streamRef.current = stream;
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream;
-      }
       setState("ready");
     } catch (err: any) {
       if (err?.name === "NotFoundError" || err?.name === "OverconstrainedError") {
@@ -92,7 +96,7 @@ export function LiveVerificationCamera({
 
   function handleRetry() {
     setCapturedImage(null);
-    startCamera();
+    requestCameraAccess();
   }
 
   return (
@@ -118,7 +122,7 @@ export function LiveVerificationCamera({
             يرجى تفعيل إذن الكاميرا من إعدادات المتصفح ثم إعادة المحاولة.
           </p>
           <button
-            onClick={startCamera}
+            onClick={requestCameraAccess}
             className="mt-2 text-sm font-bold text-[#0B3D66]"
           >
             إعادة المحاولة
