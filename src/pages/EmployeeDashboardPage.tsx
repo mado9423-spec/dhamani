@@ -18,6 +18,8 @@ export default function EmployeeDashboardPage() {
   const [results, setResults] = useState<CitizenSearchResult[]>([]);
   const [isSearching, setIsSearching] = useState(false);
   const [searched, setSearched] = useState(false);
+  const [newFileMode, setNewFileMode] = useState(false);
+  const [newFileHint, setNewFileHint] = useState<string | null>(null);
 
   useEffect(() => {
     getCurrentEmployee().then((data) => {
@@ -36,10 +38,25 @@ export default function EmployeeDashboardPage() {
 
     setIsSearching(true);
     setSearched(false);
+    setNewFileMode(false);
+    setNewFileHint(null);
     const found = await searchCitizens(query);
     setResults(found);
     setSearched(true);
     setIsSearching(false);
+  }
+
+  function handleNewFileClick() {
+    if (results.length === 0) {
+      setNewFileHint("يرجى البحث عن المواطن أولاً ثم اختر ملفه من النتائج");
+      return;
+    }
+    setNewFileHint(null);
+    setNewFileMode(true);
+  }
+
+  function handleResultClick(citizenId: string) {
+    navigate(newFileMode ? `/employee/citizens/${citizenId}?newFile=1` : `/employee/citizens/${citizenId}`);
   }
 
   if (isLoadingEmployee) {
@@ -91,6 +108,29 @@ export default function EmployeeDashboardPage() {
           </Button>
         </form>
 
+        <button
+          onClick={handleNewFileClick}
+          className={`mt-3 w-full rounded-xl border border-dashed py-3 text-sm font-bold transition-colors ${
+            newFileMode
+              ? "border-[#123F63] bg-[#E8EEF4] text-[#123F63]"
+              : "border-[#123F63] text-[#123F63]"
+          }`}
+        >
+          + ملف جديد
+        </button>
+
+        {newFileHint && (
+          <p className="mt-2 text-center text-[13px] font-semibold text-[#B8860B]">
+            {newFileHint}
+          </p>
+        )}
+
+        {newFileMode && results.length > 0 && (
+          <p className="mt-2 text-center text-[13px] font-semibold text-[#123F63]">
+            اختر المواطن أدناه لفتح ملف جديد له
+          </p>
+        )}
+
         {searched && results.length === 0 && (
           <div className="mt-6 rounded-2xl bg-[#FBEAE8] p-4 text-center text-sm font-semibold text-[#C0392B]">
             لا يوجد مواطن مطابق في نطاق صلاحياتك
@@ -102,7 +142,7 @@ export default function EmployeeDashboardPage() {
             {results.map((citizen) => (
               <button
                 key={citizen.id}
-                onClick={() => navigate(`/employee/citizens/${citizen.id}`)}
+                onClick={() => handleResultClick(citizen.id)}
                 className="rounded-2xl border border-[#E2E7EB] bg-white p-5 text-right transition-colors active:bg-[#F5F6F7]"
               >
                 <p className="text-xs font-semibold text-[#687581]">الاسم الرباعي</p>
