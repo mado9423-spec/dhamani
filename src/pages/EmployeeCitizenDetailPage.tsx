@@ -18,12 +18,24 @@ import {
 } from "../services/employee.service";
 import { IntakePanel } from "../features/digital-archive/components/IntakePanel";
 import { IntakeSource } from "../features/digital-archive/types/archive.types";
+import { useOcrExtraction } from "../features/digital-archive/hooks/useOcrExtraction";
 
 interface CapturedDocument {
   file: File;
   source: IntakeSource;
   previewUrl: string;
 }
+
+const EXTRACTED_FIELD_LABELS: Record<string, string> = {
+  documentType: "نوع الوثيقة",
+  fullName: "الاسم",
+  pensionNumber: "رقم المعاش",
+  nationalId: "الرقم الوطني",
+  documentDate: "التاريخ",
+  branch: "الفرع",
+  transactionType: "نوع المعاملة",
+  financialAmount: "المبلغ",
+};
 
 export default function EmployeeCitizenDetailPage() {
   const navigate = useNavigate();
@@ -46,16 +58,19 @@ export default function EmployeeCitizenDetailPage() {
 
   const [showIntake, setShowIntake] = useState(false);
   const [capturedDoc, setCapturedDoc] = useState<CapturedDocument | null>(null);
+  const ocrExtraction = useOcrExtraction();
 
   function handleDocumentReady(file: File, source: IntakeSource) {
     if (capturedDoc) URL.revokeObjectURL(capturedDoc.previewUrl);
     setCapturedDoc({ file, source, previewUrl: URL.createObjectURL(file) });
     setShowIntake(false);
+    ocrExtraction.runExtraction(file);
   }
 
   function handleDiscardCapture() {
     if (capturedDoc) URL.revokeObjectURL(capturedDoc.previewUrl);
     setCapturedDoc(null);
+    ocrExtraction.reset();
   }
 
   async function loadAll() {
@@ -195,7 +210,12 @@ export default function EmployeeCitizenDetailPage() {
                   {capturedDoc.file.name}
                 </p>
                 <p className="text-[12px] font-medium text-[#687581]">
-                  بانتظار معالجة OCR والحفظ (قريباً)
+                  {ocrExtraction.status === "processing" && "جارٍ استخراج البيانات..."}
+                  {ocrExtraction.status === "unsupported" &&
+                    "استخراج النص من PDF غير مدعوم بعد، أدخل البيانات يدوياً"}
+                  {ocrExtraction.status === "error" && ocrExtraction.errorMessage}
+                  {ocrExtraction.status === "done" && "تم استخراج البيانات — بانتظار المراجعة والحفظ (قريباً)"}
+                  {ocrExtraction.status === "idle" && "بانتظار المعالجة"}
                 </p>
               </div>
               <button
@@ -205,6 +225,39 @@ export default function EmployeeCitizenDetailPage() {
               >
                 إزالة
               </button>
+            </div>
+          )}
+
+          {ocrExtraction.status === "processing" && (
+            <div className="mt-3 flex items-center justify-center gap-2 rounded-xl bg-[#FAFBFC] p-3">
+              <div className="h-4 w-4 animate-spin rounded-full border-2 border-[#E2E7EB] border-t-[#123F63]" />
+              <span className="text-[13px] font-semibold text-[#687581]">
+                تحليل المستند بواسطة OCR...
+              </span>
+            </div>
+          )}
+
+          {ocrExtraction.status === "done" && ocrExtraction.data && (
+            <div className="mt-3 rounded-xl border border-[#E2E7EB] bg-[#FAFBFC] p-3">
+              <div className="mb-2 flex items-center justify-between">
+                <p className="text-[13px] font-bold text-[#17212B]">الحقول المستخرجة</p>
+                <span className="text-[12px] font-semibold text-[#687581]">
+                  نسبة الثقة: {Math.round(ocrExtraction.data.confidenceScore * 100)}%
+                </span>
+              </div>
+              <div className="grid grid-cols-2 gap-x-3 gap-y-2">
+                {Object.entries(ocrExtraction.data).map(([key, value]) => {
+                  const label = EXTRACTED_FIELD_LABELS[key];
+                  if (!label) return null;
+                  const display = value === null || value === "" ? "—" : String(value);
+                  return (
+                    <div key={key}>
+                      <p className="text-[11px] font-semibold text-[#9CA3AF]">{label}</p>
+                      <p className="truncate text-[13px] font-bold text-[#17212B]">{display}</p>
+                    </div>
+                  );
+                })}
+              </div>
             </div>
           )}
         </section>
