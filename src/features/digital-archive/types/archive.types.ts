@@ -1,4 +1,4 @@
-export type IntakeSource = "camera" | "scanner" | "pdf_upload";
+export type IntakeSource = "camera" | "scanner" | "excel_upload";
 
 export interface CapturedDocument {
   file: File;

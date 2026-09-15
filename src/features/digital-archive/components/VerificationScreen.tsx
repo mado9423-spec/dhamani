@@ -2,6 +2,7 @@ import { useState } from "react";
 import { TextField } from "../../../components/ui/TextField";
 import { Button } from "../../../components/ui/Button";
 import { ExtractedDocumentData } from "../services/ocrService";
+import { isExcelFile } from "../services/excelService";
 import { EXTRACTED_FIELD_LABELS, VerifiedFieldKey, VerifiedFields } from "../types/archive.types";
 
 const FIELD_KEYS = Object.keys(EXTRACTED_FIELD_LABELS) as VerifiedFieldKey[];
@@ -55,9 +56,9 @@ export function VerificationScreen({
   return (
     <div dir="rtl" className="flex flex-col gap-4">
       <div className="overflow-hidden rounded-2xl border border-[#E2E7EB] bg-black">
-        {file.type === "application/pdf" ? (
+        {isExcelFile(file) ? (
           <div className="flex h-40 flex-col items-center justify-center gap-2 text-white">
-            <span className="text-3xl">📄</span>
+            <span className="text-3xl">📊</span>
             <span className="max-w-[80%] truncate text-[13px] font-semibold">{file.name}</span>
           </div>
         ) : (

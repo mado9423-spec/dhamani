@@ -321,7 +321,7 @@ export default function EmployeeCitizenDetailPage() {
             <div className="mt-4">
               {ocrExtraction.status === "unsupported" && (
                 <p className="mb-3 text-[13px] font-semibold text-[#B8860B]">
-                  استخراج النص من PDF غير مدعوم بعد، يرجى إدخال الحقول يدوياً
+                  صيغة الملف غير مدعومة للاستخراج التلقائي، يرجى إدخال الحقول يدوياً
                 </p>
               )}
               {ocrExtraction.status === "error" && (

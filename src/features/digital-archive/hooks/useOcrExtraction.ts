@@ -1,5 +1,6 @@
 import { useCallback, useState } from "react";
 import { extractDocumentData, ExtractedDocumentData } from "../services/ocrService";
+import { extractDataFromExcel, isExcelFile } from "../services/excelService";
 
 type ExtractionStatus = "idle" | "processing" | "done" | "error" | "unsupported";
 
@@ -17,8 +18,10 @@ export function useOcrExtraction(): UseOcrExtractionResult {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const runExtraction = useCallback(async (file: File) => {
-    // Tesseract.js يعالج الصور فقط؛ استخراج نص PDF آلياً يُضاف في مرحلة لاحقة
-    if (file.type === "application/pdf") {
+    const isImage = file.type.startsWith("image/");
+    const isExcel = isExcelFile(file);
+
+    if (!isImage && !isExcel) {
       setStatus("unsupported");
       setData(null);
       return;
@@ -28,7 +31,7 @@ export function useOcrExtraction(): UseOcrExtractionResult {
     setErrorMessage(null);
 
     try {
-      const result = await extractDocumentData(file);
+      const result = isExcel ? await extractDataFromExcel(file) : await extractDocumentData(file);
       setData(result);
       setStatus("done");
     } catch (err) {

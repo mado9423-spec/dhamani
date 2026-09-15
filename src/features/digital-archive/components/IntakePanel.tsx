@@ -1,10 +1,10 @@
 import { useState } from "react";
 import { CameraCapture } from "./CameraCapture";
 import { DropZoneScanner } from "./DropZoneScanner";
-import { PdfUploader } from "./PdfUploader";
+import { ExcelUploader } from "./ExcelUploader";
 import { IntakeSource } from "../types/archive.types";
 
-type IntakeMode = "scanner" | "camera" | "pdf";
+type IntakeMode = "scanner" | "camera" | "excel";
 
 interface IntakePanelProps {
   onDocumentReady: (file: File, source: IntakeSource) => void;
@@ -13,7 +13,7 @@ interface IntakePanelProps {
 const MODES: { key: IntakeMode; label: string; source: IntakeSource }[] = [
   { key: "scanner", label: "🖨️ سحب وإفلات", source: "scanner" },
   { key: "camera", label: "📷 كاميرا", source: "camera" },
-  { key: "pdf", label: "📄 رفع PDF", source: "pdf_upload" },
+  { key: "excel", label: "📊 رفع Excel", source: "excel_upload" },
 ];
 
 export function IntakePanel({ onDocumentReady }: IntakePanelProps) {
@@ -44,8 +44,8 @@ export function IntakePanel({ onDocumentReady }: IntakePanelProps) {
       {mode === "camera" && (
         <CameraCapture onCapture={(file) => onDocumentReady(file, "camera")} />
       )}
-      {mode === "pdf" && (
-        <PdfUploader onSelect={(file) => onDocumentReady(file, "pdf_upload")} />
+      {mode === "excel" && (
+        <ExcelUploader onSelect={(file) => onDocumentReady(file, "excel_upload")} />
       )}
     </div>
   );
