@@ -16,6 +16,14 @@ import {
   EmployeeProfile,
   TransactionType,
 } from "../services/employee.service";
+import { IntakePanel } from "../features/digital-archive/components/IntakePanel";
+import { IntakeSource } from "../features/digital-archive/types/archive.types";
+
+interface CapturedDocument {
+  file: File;
+  source: IntakeSource;
+  previewUrl: string;
+}
 
 export default function EmployeeCitizenDetailPage() {
   const navigate = useNavigate();
@@ -35,6 +43,20 @@ export default function EmployeeCitizenDetailPage() {
   const [feedback, setFeedback] = useState<{ type: "success" | "error"; text: string } | null>(
     null
   );
+
+  const [showIntake, setShowIntake] = useState(false);
+  const [capturedDoc, setCapturedDoc] = useState<CapturedDocument | null>(null);
+
+  function handleDocumentReady(file: File, source: IntakeSource) {
+    if (capturedDoc) URL.revokeObjectURL(capturedDoc.previewUrl);
+    setCapturedDoc({ file, source, previewUrl: URL.createObjectURL(file) });
+    setShowIntake(false);
+  }
+
+  function handleDiscardCapture() {
+    if (capturedDoc) URL.revokeObjectURL(capturedDoc.previewUrl);
+    setCapturedDoc(null);
+  }
 
   async function loadAll() {
     if (!citizenId) return;
@@ -128,6 +150,63 @@ export default function EmployeeCitizenDetailPage() {
           <p className="mt-1 text-base font-bold text-[#16803C]">
             {citizen.status === "active" ? "نشط" : citizen.status === "suspended" ? "موقوف" : "مؤرشف"}
           </p>
+        </section>
+
+        <section className="rounded-2xl border border-[#E2E7EB] bg-white p-5">
+          <div className="flex items-center justify-between">
+            <h2 className="text-sm font-bold text-[#17212B]">إدخال مستند جديد</h2>
+            {!showIntake && (
+              <button
+                onClick={() => setShowIntake(true)}
+                className="text-[13px] font-bold text-[#123F63]"
+              >
+                + إضافة مستند
+              </button>
+            )}
+          </div>
+
+          {showIntake && (
+            <div className="mt-4">
+              <IntakePanel onDocumentReady={handleDocumentReady} />
+              <button
+                onClick={() => setShowIntake(false)}
+                className="mt-3 text-[13px] font-semibold text-[#687581]"
+              >
+                إلغاء
+              </button>
+            </div>
+          )}
+
+          {capturedDoc && (
+            <div className="mt-4 flex items-center gap-3 rounded-xl border border-[#E2E7EB] bg-[#FAFBFC] p-3">
+              {capturedDoc.file.type === "application/pdf" ? (
+                <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-lg bg-white text-xl">
+                  📄
+                </div>
+              ) : (
+                <img
+                  src={capturedDoc.previewUrl}
+                  alt="معاينة المستند"
+                  className="h-14 w-14 shrink-0 rounded-lg object-cover"
+                />
+              )}
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-[13px] font-bold text-[#17212B]">
+                  {capturedDoc.file.name}
+                </p>
+                <p className="text-[12px] font-medium text-[#687581]">
+                  بانتظار معالجة OCR والحفظ (قريباً)
+                </p>
+              </div>
+              <button
+                onClick={handleDiscardCapture}
+                aria-label="إزالة المستند"
+                className="shrink-0 text-[13px] font-bold text-[#C0392B]"
+              >
+                إزالة
+              </button>
+            </div>
+          )}
         </section>
 
         <section>
