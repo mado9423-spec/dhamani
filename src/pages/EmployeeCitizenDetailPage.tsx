@@ -19,6 +19,8 @@ import {
 import { IntakePanel } from "../features/digital-archive/components/IntakePanel";
 import { IntakeSource } from "../features/digital-archive/types/archive.types";
 import { useOcrExtraction } from "../features/digital-archive/hooks/useOcrExtraction";
+import { uploadDocumentFile } from "../features/digital-archive/services/storageService";
+import { createDocument } from "../features/digital-archive/services/document.service";
 
 interface CapturedDocument {
   file: File;
@@ -59,18 +61,63 @@ export default function EmployeeCitizenDetailPage() {
   const [showIntake, setShowIntake] = useState(false);
   const [capturedDoc, setCapturedDoc] = useState<CapturedDocument | null>(null);
   const ocrExtraction = useOcrExtraction();
+  const [isSavingDoc, setIsSavingDoc] = useState(false);
+  const [saveDocFeedback, setSaveDocFeedback] = useState<
+    { type: "success" | "error"; text: string } | null
+  >(null);
 
   function handleDocumentReady(file: File, source: IntakeSource) {
     if (capturedDoc) URL.revokeObjectURL(capturedDoc.previewUrl);
     setCapturedDoc({ file, source, previewUrl: URL.createObjectURL(file) });
     setShowIntake(false);
+    setSaveDocFeedback(null);
     ocrExtraction.runExtraction(file);
   }
 
   function handleDiscardCapture() {
     if (capturedDoc) URL.revokeObjectURL(capturedDoc.previewUrl);
     setCapturedDoc(null);
+    setSaveDocFeedback(null);
     ocrExtraction.reset();
+  }
+
+  async function handleSaveDocument() {
+    if (!capturedDoc || !citizen || !employee) return;
+    setIsSavingDoc(true);
+    setSaveDocFeedback(null);
+
+    try {
+      const uploaded = await uploadDocumentFile(capturedDoc.file, citizen.branch_id, citizen.id);
+      const result = await createDocument({
+        citizenId: citizen.id,
+        branchId: citizen.branch_id,
+        intakeSource: capturedDoc.source,
+        documentType: ocrExtraction.data?.documentType ?? "",
+        storagePath: uploaded.storagePath,
+        storageBucket: uploaded.storageBucket,
+        originalFilename: capturedDoc.file.name,
+        mimeType: capturedDoc.file.type,
+        fileSizeBytes: capturedDoc.file.size,
+        ocrRawText: ocrExtraction.data?.rawText ?? null,
+        ocrConfidence: ocrExtraction.data?.confidenceScore ?? null,
+        extractedData: ocrExtraction.data,
+        uploadedBy: employee.id,
+      });
+
+      if (!result.success) {
+        setSaveDocFeedback({ type: "error", text: result.message ?? "تعذر حفظ المستند" });
+        return;
+      }
+
+      URL.revokeObjectURL(capturedDoc.previewUrl);
+      setCapturedDoc(null);
+      ocrExtraction.reset();
+      setSaveDocFeedback({ type: "success", text: "تم رفع المستند وحفظه، بانتظار المراجعة" });
+    } catch {
+      setSaveDocFeedback({ type: "error", text: "تعذر رفع الملف إلى التخزين" });
+    } finally {
+      setIsSavingDoc(false);
+    }
   }
 
   async function loadAll() {
@@ -214,7 +261,7 @@ export default function EmployeeCitizenDetailPage() {
                   {ocrExtraction.status === "unsupported" &&
                     "استخراج النص من PDF غير مدعوم بعد، أدخل البيانات يدوياً"}
                   {ocrExtraction.status === "error" && ocrExtraction.errorMessage}
-                  {ocrExtraction.status === "done" && "تم استخراج البيانات — بانتظار المراجعة والحفظ (قريباً)"}
+                  {ocrExtraction.status === "done" && "تم استخراج البيانات — راجعها ثم احفظ في الأرشيف"}
                   {ocrExtraction.status === "idle" && "بانتظار المعالجة"}
                 </p>
               </div>
@@ -258,6 +305,28 @@ export default function EmployeeCitizenDetailPage() {
                   );
                 })}
               </div>
+            </div>
+          )}
+
+          {capturedDoc && ocrExtraction.status !== "processing" && (
+            <Button
+              onClick={handleSaveDocument}
+              isLoading={isSavingDoc}
+              className="mt-3"
+            >
+              حفظ المستند في الأرشيف
+            </Button>
+          )}
+
+          {saveDocFeedback && (
+            <div
+              className={`mt-3 rounded-xl p-3 text-center text-[13px] font-semibold ${
+                saveDocFeedback.type === "success"
+                  ? "bg-[#EAF7F0] text-[#16803C]"
+                  : "bg-[#FBEAE8] text-[#C0392B]"
+              }`}
+            >
+              {saveDocFeedback.text}
             </div>
           )}
         </section>
