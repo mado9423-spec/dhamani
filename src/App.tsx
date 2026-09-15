@@ -9,6 +9,8 @@ import TransactionsPage from "./pages/TransactionsPage";
 import EmployeeDashboardPage from "./pages/EmployeeDashboardPage";
 import EmployeeCitizenDetailPage from "./pages/EmployeeCitizenDetailPage";
 import EmployeeChangePasswordPage from "./pages/EmployeeChangePasswordPage";
+import EmployerLoginPage from "./pages/EmployerLoginPage";
+import EmployerDashboardPage from "./pages/EmployerDashboardPage";
 import { SplashScreen } from "./components/SplashScreen";
 
 export default function App() {
@@ -27,6 +29,8 @@ export default function App() {
         <Route path="/employee/dashboard" element={<EmployeeDashboardPage />} />
         <Route path="/employee/citizens/:citizenId" element={<EmployeeCitizenDetailPage />} />
         <Route path="/employee/change-password" element={<EmployeeChangePasswordPage />} />
+        <Route path="/employer/login" element={<EmployerLoginPage />} />
+        <Route path="/employer/dashboard" element={<EmployerDashboardPage />} />
         <Route path="/home" element={<HomePage />} />
         <Route path="/declaration" element={<DeclarationPage />} />
         <Route path="/appointments/:type" element={<AppointmentBookingPage />} />
