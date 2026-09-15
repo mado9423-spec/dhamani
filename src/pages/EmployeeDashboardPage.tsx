@@ -53,18 +53,28 @@ export default function EmployeeDashboardPage() {
   return (
     <div dir="rtl" className="min-h-screen bg-[#F5F6F7] font-cairo">
       <header className="bg-[#17212B] px-6 py-5">
-        <p className="text-xs font-semibold text-white/60">لوحة الموظف</p>
-        <h1 className="mt-1 text-lg font-bold text-white">
-          {employee?.fullName}
-        </h1>
-        <p className="mt-0.5 text-[12px] font-medium text-white/50">
-          رقم الموظف: {employee?.employeeNumber} •{" "}
-          {employee?.role === "admin"
-            ? "أدمن"
-            : employee?.role === "supervisor"
-              ? "مشرف"
-              : "موظف"}
-        </p>
+        <div className="flex items-start justify-between">
+          <div>
+            <p className="text-xs font-semibold text-white/60">لوحة الموظف</p>
+            <h1 className="mt-1 text-lg font-bold text-white">
+              {employee?.fullName}
+            </h1>
+            <p className="mt-0.5 text-[12px] font-medium text-white/50">
+              رقم الموظف: {employee?.employeeNumber} •{" "}
+              {employee?.role === "admin"
+                ? "أدمن"
+                : employee?.role === "supervisor"
+                  ? "مشرف"
+                  : "موظف"}
+            </p>
+          </div>
+          <button
+            onClick={() => navigate("/employee/change-password")}
+            className="mt-1 text-[12px] font-bold text-white/70"
+          >
+            تغيير كلمة المرور
+          </button>
+        </div>
       </header>
 
       <main className="px-6 py-6">
