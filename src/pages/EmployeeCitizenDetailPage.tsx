@@ -13,9 +13,41 @@ import {
   getCurrentEmployee,
   listTransactionTypes,
   createTransactionForCitizen,
+  transitionTransactionStatus,
   EmployeeProfile,
   TransactionType,
 } from "../services/employee.service";
+import { WorkflowTracker } from "../components/WorkflowTracker";
+import { IntakePanel } from "../features/digital-archive/components/IntakePanel";
+import { VerificationScreen } from "../features/digital-archive/components/VerificationScreen";
+import { IntakeSource, VerifiedFields } from "../features/digital-archive/types/archive.types";
+import { useOcrExtraction } from "../features/digital-archive/hooks/useOcrExtraction";
+import { uploadDocumentFile, getDocumentSignedUrl } from "../features/digital-archive/services/storageService";
+import {
+  createDocument,
+  listCitizenDocuments,
+  CitizenDocumentSummary,
+} from "../features/digital-archive/services/document.service";
+import { listAuditLogsForRecords, AuditLogEntry } from "../services/audit.service";
+
+const DOCUMENT_REVIEW_STATUS_LABELS: Record<string, string> = {
+  pending_review: "قيد المراجعة",
+  reviewed: "تمت المراجعة",
+  approved: "معتمد",
+  rejected: "مرفوض",
+};
+
+const AUDIT_ACTION_LABELS: Record<string, string> = {
+  created: "إنشاء",
+  transaction_status_changed: "تغيير حالة المعاملة",
+  document_approved: "اعتماد مستند",
+};
+
+interface CapturedDocument {
+  file: File;
+  source: IntakeSource;
+  previewUrl: string;
+}
 
 export default function EmployeeCitizenDetailPage() {
   const navigate = useNavigate();
@@ -35,16 +67,96 @@ export default function EmployeeCitizenDetailPage() {
   const [feedback, setFeedback] = useState<{ type: "success" | "error"; text: string } | null>(
     null
   );
+  const [transitioningId, setTransitioningId] = useState<string | null>(null);
+
+  const [showIntake, setShowIntake] = useState(false);
+  const [capturedDoc, setCapturedDoc] = useState<CapturedDocument | null>(null);
+  const ocrExtraction = useOcrExtraction();
+  const [isSavingDoc, setIsSavingDoc] = useState(false);
+  const [saveDocFeedback, setSaveDocFeedback] = useState<
+    { type: "success" | "error"; text: string } | null
+  >(null);
+
+  const [archivedDocuments, setArchivedDocuments] = useState<CitizenDocumentSummary[]>([]);
+  const [viewingDocId, setViewingDocId] = useState<string | null>(null);
+  const [viewDocError, setViewDocError] = useState<string | null>(null);
+  const [auditLogs, setAuditLogs] = useState<AuditLogEntry[]>([]);
+
+  function handleDocumentReady(file: File, source: IntakeSource) {
+    if (capturedDoc) URL.revokeObjectURL(capturedDoc.previewUrl);
+    setCapturedDoc({ file, source, previewUrl: URL.createObjectURL(file) });
+    setShowIntake(false);
+    setSaveDocFeedback(null);
+    ocrExtraction.runExtraction(file);
+  }
+
+  function handleDiscardCapture() {
+    if (capturedDoc) URL.revokeObjectURL(capturedDoc.previewUrl);
+    setCapturedDoc(null);
+    setSaveDocFeedback(null);
+    ocrExtraction.reset();
+  }
+
+  function handleRejectDocument() {
+    handleDiscardCapture();
+    setSaveDocFeedback({ type: "success", text: "تم إلغاء المستند، يمكنك إعادة المسح" });
+  }
+
+  async function handleApproveDocument(fields: VerifiedFields) {
+    if (!capturedDoc || !citizen || !employee) return;
+    setIsSavingDoc(true);
+    setSaveDocFeedback(null);
+
+    try {
+      const uploaded = await uploadDocumentFile(capturedDoc.file, citizen.branch_id, citizen.id);
+      const result = await createDocument({
+        citizenId: citizen.id,
+        branchId: citizen.branch_id,
+        intakeSource: capturedDoc.source,
+        documentType: fields.documentType,
+        storagePath: uploaded.storagePath,
+        storageBucket: uploaded.storageBucket,
+        originalFilename: capturedDoc.file.name,
+        mimeType: capturedDoc.file.type,
+        fileSizeBytes: capturedDoc.file.size,
+        ocrRawText: ocrExtraction.data?.rawText ?? null,
+        ocrConfidence: ocrExtraction.data?.confidenceScore ?? null,
+        extractedData: ocrExtraction.data,
+        verifiedData: fields,
+        reviewStatus: "approved",
+        uploadedBy: employee.id,
+        reviewedBy: employee.id,
+        approvedBy: employee.id,
+        approvedAt: new Date().toISOString(),
+      });
+
+      if (!result.success) {
+        setSaveDocFeedback({ type: "error", text: result.message ?? "تعذر حفظ المستند" });
+        return;
+      }
+
+      URL.revokeObjectURL(capturedDoc.previewUrl);
+      setCapturedDoc(null);
+      ocrExtraction.reset();
+      setSaveDocFeedback({ type: "success", text: "تم اعتماد المستند وحفظه في الأرشيف" });
+      await loadAll();
+    } catch {
+      setSaveDocFeedback({ type: "error", text: "تعذر رفع الملف إلى التخزين" });
+    } finally {
+      setIsSavingDoc(false);
+    }
+  }
 
   async function loadAll() {
     if (!citizenId) return;
-    const [emp, c, decl, appt, txn, txnTypes] = await Promise.all([
+    const [emp, c, decl, appt, txn, txnTypes, docs] = await Promise.all([
       getCurrentEmployee(),
       getCitizenById(citizenId),
       getCitizenDeclarations(citizenId),
       getCitizenAppointments(citizenId),
       getCitizenTransactions(citizenId),
       listTransactionTypes(),
+      listCitizenDocuments(citizenId),
     ]);
 
     if (!emp) {
@@ -58,7 +170,15 @@ export default function EmployeeCitizenDetailPage() {
     setAppointments(appt);
     setTransactions(txn);
     setTypes(txnTypes);
+    setArchivedDocuments(docs);
     setIsLoading(false);
+
+    if (emp.role === "admin" || emp.role === "supervisor") {
+      const recordIds = [...txn.map((t) => t.id), ...docs.map((d) => d.id)];
+      setAuditLogs(await listAuditLogsForRecords(recordIds));
+    } else {
+      setAuditLogs([]);
+    }
   }
 
   useEffect(() => {
@@ -67,7 +187,7 @@ export default function EmployeeCitizenDetailPage() {
   }, [citizenId]);
 
   async function handleCreateTransaction() {
-    if (!citizen || !selectedTypeId) return;
+    if (!citizen || !selectedTypeId || !employee) return;
     setIsCreating(true);
     setFeedback(null);
 
@@ -75,7 +195,8 @@ export default function EmployeeCitizenDetailPage() {
       citizen.id,
       citizen.branch_id,
       selectedTypeId,
-      notes
+      notes,
+      employee.id
     );
 
     setIsCreating(false);
@@ -89,6 +210,38 @@ export default function EmployeeCitizenDetailPage() {
     setSelectedTypeId("");
     setNotes("");
     await loadAll();
+  }
+
+  async function handleViewDocument(storagePath: string, documentId: string) {
+    setViewingDocId(documentId);
+    setViewDocError(null);
+    try {
+      const url = await getDocumentSignedUrl(storagePath);
+      window.open(url, "_blank", "noopener,noreferrer");
+    } catch {
+      setViewDocError("تعذر فتح المستند");
+    } finally {
+      setViewingDocId(null);
+    }
+  }
+
+  async function handleTransitionStatus(
+    transactionId: string,
+    previousStatus: TransactionStatus,
+    newStatus: TransactionStatus
+  ) {
+    if (!employee) return;
+    setTransitioningId(transactionId);
+    const result = await transitionTransactionStatus(
+      transactionId,
+      previousStatus,
+      newStatus,
+      employee.id
+    );
+    setTransitioningId(null);
+    if (result.success) {
+      await loadAll();
+    }
   }
 
   if (isLoading) {
@@ -130,6 +283,82 @@ export default function EmployeeCitizenDetailPage() {
           </p>
         </section>
 
+        <section className="rounded-2xl border border-[#E2E7EB] bg-white p-5">
+          <div className="flex items-center justify-between">
+            <h2 className="text-sm font-bold text-[#17212B]">إدخال مستند جديد</h2>
+            {!showIntake && (
+              <button
+                onClick={() => setShowIntake(true)}
+                className="text-[13px] font-bold text-[#123F63]"
+              >
+                + إضافة مستند
+              </button>
+            )}
+          </div>
+
+          {showIntake && (
+            <div className="mt-4">
+              <IntakePanel onDocumentReady={handleDocumentReady} />
+              <button
+                onClick={() => setShowIntake(false)}
+                className="mt-3 text-[13px] font-semibold text-[#687581]"
+              >
+                إلغاء
+              </button>
+            </div>
+          )}
+
+          {capturedDoc && ocrExtraction.status === "processing" && (
+            <div className="mt-4 flex items-center gap-3 rounded-xl border border-[#E2E7EB] bg-[#FAFBFC] p-3">
+              <div className="h-4 w-4 shrink-0 animate-spin rounded-full border-2 border-[#E2E7EB] border-t-[#123F63]" />
+              <p className="truncate text-[13px] font-semibold text-[#687581]">
+                جارٍ تحليل «{capturedDoc.file.name}» بواسطة OCR...
+              </p>
+            </div>
+          )}
+
+          {capturedDoc && ocrExtraction.status !== "processing" && (
+            <div className="mt-4">
+              {ocrExtraction.status === "unsupported" && (
+                <p className="mb-3 text-[13px] font-semibold text-[#B8860B]">
+                  صيغة الملف غير مدعومة للاستخراج التلقائي، يرجى إدخال الحقول يدوياً
+                </p>
+              )}
+              {ocrExtraction.status === "error" && (
+                <p className="mb-3 text-[13px] font-semibold text-[#C0392B]">
+                  {ocrExtraction.errorMessage}
+                </p>
+              )}
+              {ocrExtraction.status === "done" && ocrExtraction.data && (
+                <p className="mb-3 text-[13px] font-semibold text-[#687581]">
+                  نسبة ثقة الاستخراج: {Math.round(ocrExtraction.data.confidenceScore * 100)}% — راجع
+                  الحقول أدناه قبل الاعتماد
+                </p>
+              )}
+              <VerificationScreen
+                file={capturedDoc.file}
+                previewUrl={capturedDoc.previewUrl}
+                initialData={ocrExtraction.data}
+                isSubmitting={isSavingDoc}
+                onApprove={handleApproveDocument}
+                onReject={handleRejectDocument}
+              />
+            </div>
+          )}
+
+          {saveDocFeedback && (
+            <div
+              className={`mt-3 rounded-xl p-3 text-center text-[13px] font-semibold ${
+                saveDocFeedback.type === "success"
+                  ? "bg-[#EAF7F0] text-[#16803C]"
+                  : "bg-[#FBEAE8] text-[#C0392B]"
+              }`}
+            >
+              {saveDocFeedback.text}
+            </div>
+          )}
+        </section>
+
         <section>
           <h2 className="mb-2 text-sm font-bold text-[#17212B]">الإقرارات السنوية</h2>
           {declarations.length === 0 ? (
@@ -165,21 +394,120 @@ export default function EmployeeCitizenDetailPage() {
           {transactions.length === 0 ? (
             <p className="text-[13px] font-medium text-[#9CA3AF]">لا توجد معاملات</p>
           ) : (
+            <div className="flex flex-col gap-3">
+              {transactions.map((t) => {
+                const status = t.status as TransactionStatus;
+                const isTransitioning = transitioningId === t.id;
+                return (
+                  <div key={t.id} className="rounded-xl border border-[#E2E7EB] bg-white p-3">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[13px] font-semibold text-[#17212B]">
+                        {t.transaction_types?.name_ar ?? "معاملة"}
+                      </span>
+                      <StatusBadge status={status} />
+                    </div>
+
+                    <div className="mt-3">
+                      <WorkflowTracker status={status} />
+                    </div>
+
+                    {(status === "pending_review" || status === "accepted") && (
+                      <div className="mt-3 flex gap-2">
+                        {status === "pending_review" && (
+                          <button
+                            onClick={() => handleTransitionStatus(t.id, status, "accepted")}
+                            disabled={isTransitioning}
+                            className="h-9 flex-1 rounded-lg bg-[#123F63] text-[12px] font-bold text-white transition-opacity disabled:opacity-50"
+                          >
+                            قبول
+                          </button>
+                        )}
+                        {status === "accepted" && (
+                          <button
+                            onClick={() => handleTransitionStatus(t.id, status, "completed")}
+                            disabled={isTransitioning}
+                            className="h-9 flex-1 rounded-lg bg-[#123F63] text-[12px] font-bold text-white transition-opacity disabled:opacity-50"
+                          >
+                            إكمال
+                          </button>
+                        )}
+                        <button
+                          onClick={() => handleTransitionStatus(t.id, status, "rejected")}
+                          disabled={isTransitioning}
+                          className="h-9 flex-1 rounded-lg border border-[#E2E7EB] text-[12px] font-bold text-[#C0392B] transition-opacity disabled:opacity-50"
+                        >
+                          رفض
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </section>
+
+        <section>
+          <h2 className="mb-2 text-sm font-bold text-[#17212B]">المستندات المؤرشفة</h2>
+          {archivedDocuments.length === 0 ? (
+            <p className="text-[13px] font-medium text-[#9CA3AF]">لا توجد مستندات مؤرشفة</p>
+          ) : (
             <div className="flex flex-col gap-2">
-              {transactions.map((t) => (
+              {archivedDocuments.map((doc) => (
                 <div
-                  key={t.id}
+                  key={doc.id}
                   className="flex items-center justify-between rounded-xl border border-[#E2E7EB] bg-white p-3"
                 >
-                  <span className="text-[13px] font-semibold text-[#17212B]">
-                    {t.transaction_types?.name_ar ?? "معاملة"}
-                  </span>
-                  <StatusBadge status={t.status as TransactionStatus} />
+                  <div className="min-w-0">
+                    <p className="truncate text-[13px] font-semibold text-[#17212B]">
+                      {doc.documentType || doc.originalFilename || "مستند"}
+                    </p>
+                    <p className="text-[11px] font-medium text-[#9CA3AF]">
+                      {DOCUMENT_REVIEW_STATUS_LABELS[doc.reviewStatus] ?? doc.reviewStatus}
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => handleViewDocument(doc.storagePath, doc.id)}
+                    disabled={viewingDocId === doc.id}
+                    className="shrink-0 text-[13px] font-bold text-[#123F63] disabled:opacity-50"
+                  >
+                    {viewingDocId === doc.id ? "..." : "عرض"}
+                  </button>
                 </div>
               ))}
             </div>
           )}
+          {viewDocError && (
+            <p className="mt-2 text-[13px] font-semibold text-[#C0392B]">{viewDocError}</p>
+          )}
         </section>
+
+        {(employee?.role === "admin" || employee?.role === "supervisor") && (
+          <section>
+            <h2 className="mb-2 text-sm font-bold text-[#17212B]">سجل التدقيق</h2>
+            {auditLogs.length === 0 ? (
+              <p className="text-[13px] font-medium text-[#9CA3AF]">لا توجد سجلات تدقيق</p>
+            ) : (
+              <div className="flex flex-col gap-2">
+                {auditLogs.map((log) => (
+                  <div
+                    key={log.id}
+                    className="rounded-xl border border-[#E2E7EB] bg-white p-3 text-[13px]"
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="font-bold text-[#17212B]">
+                        {AUDIT_ACTION_LABELS[log.action] ?? log.action}
+                      </span>
+                      <span className="text-[11px] font-medium text-[#9CA3AF]">
+                        {new Date(log.createdAt).toLocaleString("ar-LY")}
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </section>
+        )}
 
         <section className="rounded-2xl border border-[#E2E7EB] bg-white p-5">
           <h2 className="mb-3 text-sm font-bold text-[#17212B]">إنشاء معاملة جديدة</h2>
