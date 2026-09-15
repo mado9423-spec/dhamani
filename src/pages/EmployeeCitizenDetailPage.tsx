@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { Button } from "../components/ui/Button";
 import { Select } from "../components/ui/Select";
 import { StatusBadge, TransactionStatus } from "../components/StatusBadge";
@@ -52,6 +52,8 @@ interface CapturedDocument {
 export default function EmployeeCitizenDetailPage() {
   const navigate = useNavigate();
   const { citizenId } = useParams<{ citizenId: string }>();
+  const [searchParams] = useSearchParams();
+  const wantsNewFile = searchParams.get("newFile") === "1";
 
   const [employee, setEmployee] = useState<EmployeeProfile | null>(null);
   const [citizen, setCitizen] = useState<any>(null);
@@ -69,7 +71,7 @@ export default function EmployeeCitizenDetailPage() {
   );
   const [transitioningId, setTransitioningId] = useState<string | null>(null);
 
-  const [showIntake, setShowIntake] = useState(false);
+  const [showIntake, setShowIntake] = useState(wantsNewFile);
   const [capturedDoc, setCapturedDoc] = useState<CapturedDocument | null>(null);
   const ocrExtraction = useOcrExtraction();
   const [isSavingDoc, setIsSavingDoc] = useState(false);
@@ -285,7 +287,7 @@ export default function EmployeeCitizenDetailPage() {
 
         <section className="rounded-2xl border border-[#E2E7EB] bg-white p-5">
           <div className="flex items-center justify-between">
-            <h2 className="text-sm font-bold text-[#17212B]">إدخال مستند جديد</h2>
+            <h2 className="text-sm font-bold text-[#17212B]">ملف جديد</h2>
             {!showIntake && (
               <button
                 onClick={() => setShowIntake(true)}
