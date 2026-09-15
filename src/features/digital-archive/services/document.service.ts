@@ -1,5 +1,5 @@
 import { supabase } from "../../../lib/supabaseClient";
-import { IntakeSource } from "../types/archive.types";
+import { DocumentReviewStatus, IntakeSource, VerifiedFields } from "../types/archive.types";
 import { ExtractedDocumentData } from "./ocrService";
 
 export interface CreateDocumentInput {
@@ -15,7 +15,12 @@ export interface CreateDocumentInput {
   ocrRawText: string | null;
   ocrConfidence: number | null;
   extractedData: ExtractedDocumentData | null;
+  verifiedData: VerifiedFields | null;
+  reviewStatus: DocumentReviewStatus;
   uploadedBy: string;
+  reviewedBy?: string;
+  approvedBy?: string;
+  approvedAt?: string;
 }
 
 export interface CreateDocumentResult {
@@ -25,9 +30,9 @@ export interface CreateDocumentResult {
 }
 
 /**
- * يُدرج سطر المستند بحالة review_status الافتراضية 'pending_review' دائماً —
- * لا يوجد مسار آخر يكتب في هذا الجدول بحالة نهائية (الاعتماد يتم لاحقاً
- * عبر شاشة المراجعة في مرحلة قادمة).
+ * المسار الوحيد الذي يُدرج سطراً في جدول documents، ويُستدعى فقط من زر
+ * "اعتماد وتدقيق" في VerificationScreen بعد مراجعة الموظف للحقول —
+ * لا يوجد إدراج مباشر بعد OCR دون مرور الموظف على هذه الشاشة أولاً.
  */
 export async function createDocument(
   input: CreateDocumentInput
@@ -47,7 +52,12 @@ export async function createDocument(
       ocr_raw_text: input.ocrRawText,
       ocr_confidence: input.ocrConfidence,
       extracted_data: input.extractedData,
+      verified_data: input.verifiedData,
+      review_status: input.reviewStatus,
       uploaded_by: input.uploadedBy,
+      reviewed_by: input.reviewedBy ?? null,
+      approved_by: input.approvedBy ?? null,
+      approved_at: input.approvedAt ?? null,
     })
     .select("id")
     .single();

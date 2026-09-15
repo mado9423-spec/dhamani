@@ -17,7 +17,8 @@ import {
   TransactionType,
 } from "../services/employee.service";
 import { IntakePanel } from "../features/digital-archive/components/IntakePanel";
-import { IntakeSource } from "../features/digital-archive/types/archive.types";
+import { VerificationScreen } from "../features/digital-archive/components/VerificationScreen";
+import { IntakeSource, VerifiedFields } from "../features/digital-archive/types/archive.types";
 import { useOcrExtraction } from "../features/digital-archive/hooks/useOcrExtraction";
 import { uploadDocumentFile } from "../features/digital-archive/services/storageService";
 import { createDocument } from "../features/digital-archive/services/document.service";
@@ -27,17 +28,6 @@ interface CapturedDocument {
   source: IntakeSource;
   previewUrl: string;
 }
-
-const EXTRACTED_FIELD_LABELS: Record<string, string> = {
-  documentType: "نوع الوثيقة",
-  fullName: "الاسم",
-  pensionNumber: "رقم المعاش",
-  nationalId: "الرقم الوطني",
-  documentDate: "التاريخ",
-  branch: "الفرع",
-  transactionType: "نوع المعاملة",
-  financialAmount: "المبلغ",
-};
 
 export default function EmployeeCitizenDetailPage() {
   const navigate = useNavigate();
@@ -81,7 +71,12 @@ export default function EmployeeCitizenDetailPage() {
     ocrExtraction.reset();
   }
 
-  async function handleSaveDocument() {
+  function handleRejectDocument() {
+    handleDiscardCapture();
+    setSaveDocFeedback({ type: "success", text: "تم إلغاء المستند، يمكنك إعادة المسح" });
+  }
+
+  async function handleApproveDocument(fields: VerifiedFields) {
     if (!capturedDoc || !citizen || !employee) return;
     setIsSavingDoc(true);
     setSaveDocFeedback(null);
@@ -92,7 +87,7 @@ export default function EmployeeCitizenDetailPage() {
         citizenId: citizen.id,
         branchId: citizen.branch_id,
         intakeSource: capturedDoc.source,
-        documentType: ocrExtraction.data?.documentType ?? "",
+        documentType: fields.documentType,
         storagePath: uploaded.storagePath,
         storageBucket: uploaded.storageBucket,
         originalFilename: capturedDoc.file.name,
@@ -101,7 +96,12 @@ export default function EmployeeCitizenDetailPage() {
         ocrRawText: ocrExtraction.data?.rawText ?? null,
         ocrConfidence: ocrExtraction.data?.confidenceScore ?? null,
         extractedData: ocrExtraction.data,
+        verifiedData: fields,
+        reviewStatus: "approved",
         uploadedBy: employee.id,
+        reviewedBy: employee.id,
+        approvedBy: employee.id,
+        approvedAt: new Date().toISOString(),
       });
 
       if (!result.success) {
@@ -112,7 +112,7 @@ export default function EmployeeCitizenDetailPage() {
       URL.revokeObjectURL(capturedDoc.previewUrl);
       setCapturedDoc(null);
       ocrExtraction.reset();
-      setSaveDocFeedback({ type: "success", text: "تم رفع المستند وحفظه، بانتظار المراجعة" });
+      setSaveDocFeedback({ type: "success", text: "تم اعتماد المستند وحفظه في الأرشيف" });
     } catch {
       setSaveDocFeedback({ type: "error", text: "تعذر رفع الملف إلى التخزين" });
     } finally {
@@ -239,83 +239,42 @@ export default function EmployeeCitizenDetailPage() {
             </div>
           )}
 
-          {capturedDoc && (
+          {capturedDoc && ocrExtraction.status === "processing" && (
             <div className="mt-4 flex items-center gap-3 rounded-xl border border-[#E2E7EB] bg-[#FAFBFC] p-3">
-              {capturedDoc.file.type === "application/pdf" ? (
-                <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-lg bg-white text-xl">
-                  📄
-                </div>
-              ) : (
-                <img
-                  src={capturedDoc.previewUrl}
-                  alt="معاينة المستند"
-                  className="h-14 w-14 shrink-0 rounded-lg object-cover"
-                />
-              )}
-              <div className="min-w-0 flex-1">
-                <p className="truncate text-[13px] font-bold text-[#17212B]">
-                  {capturedDoc.file.name}
-                </p>
-                <p className="text-[12px] font-medium text-[#687581]">
-                  {ocrExtraction.status === "processing" && "جارٍ استخراج البيانات..."}
-                  {ocrExtraction.status === "unsupported" &&
-                    "استخراج النص من PDF غير مدعوم بعد، أدخل البيانات يدوياً"}
-                  {ocrExtraction.status === "error" && ocrExtraction.errorMessage}
-                  {ocrExtraction.status === "done" && "تم استخراج البيانات — راجعها ثم احفظ في الأرشيف"}
-                  {ocrExtraction.status === "idle" && "بانتظار المعالجة"}
-                </p>
-              </div>
-              <button
-                onClick={handleDiscardCapture}
-                aria-label="إزالة المستند"
-                className="shrink-0 text-[13px] font-bold text-[#C0392B]"
-              >
-                إزالة
-              </button>
-            </div>
-          )}
-
-          {ocrExtraction.status === "processing" && (
-            <div className="mt-3 flex items-center justify-center gap-2 rounded-xl bg-[#FAFBFC] p-3">
-              <div className="h-4 w-4 animate-spin rounded-full border-2 border-[#E2E7EB] border-t-[#123F63]" />
-              <span className="text-[13px] font-semibold text-[#687581]">
-                تحليل المستند بواسطة OCR...
-              </span>
-            </div>
-          )}
-
-          {ocrExtraction.status === "done" && ocrExtraction.data && (
-            <div className="mt-3 rounded-xl border border-[#E2E7EB] bg-[#FAFBFC] p-3">
-              <div className="mb-2 flex items-center justify-between">
-                <p className="text-[13px] font-bold text-[#17212B]">الحقول المستخرجة</p>
-                <span className="text-[12px] font-semibold text-[#687581]">
-                  نسبة الثقة: {Math.round(ocrExtraction.data.confidenceScore * 100)}%
-                </span>
-              </div>
-              <div className="grid grid-cols-2 gap-x-3 gap-y-2">
-                {Object.entries(ocrExtraction.data).map(([key, value]) => {
-                  const label = EXTRACTED_FIELD_LABELS[key];
-                  if (!label) return null;
-                  const display = value === null || value === "" ? "—" : String(value);
-                  return (
-                    <div key={key}>
-                      <p className="text-[11px] font-semibold text-[#9CA3AF]">{label}</p>
-                      <p className="truncate text-[13px] font-bold text-[#17212B]">{display}</p>
-                    </div>
-                  );
-                })}
-              </div>
+              <div className="h-4 w-4 shrink-0 animate-spin rounded-full border-2 border-[#E2E7EB] border-t-[#123F63]" />
+              <p className="truncate text-[13px] font-semibold text-[#687581]">
+                جارٍ تحليل «{capturedDoc.file.name}» بواسطة OCR...
+              </p>
             </div>
           )}
 
           {capturedDoc && ocrExtraction.status !== "processing" && (
-            <Button
-              onClick={handleSaveDocument}
-              isLoading={isSavingDoc}
-              className="mt-3"
-            >
-              حفظ المستند في الأرشيف
-            </Button>
+            <div className="mt-4">
+              {ocrExtraction.status === "unsupported" && (
+                <p className="mb-3 text-[13px] font-semibold text-[#B8860B]">
+                  استخراج النص من PDF غير مدعوم بعد، يرجى إدخال الحقول يدوياً
+                </p>
+              )}
+              {ocrExtraction.status === "error" && (
+                <p className="mb-3 text-[13px] font-semibold text-[#C0392B]">
+                  {ocrExtraction.errorMessage}
+                </p>
+              )}
+              {ocrExtraction.status === "done" && ocrExtraction.data && (
+                <p className="mb-3 text-[13px] font-semibold text-[#687581]">
+                  نسبة ثقة الاستخراج: {Math.round(ocrExtraction.data.confidenceScore * 100)}% — راجع
+                  الحقول أدناه قبل الاعتماد
+                </p>
+              )}
+              <VerificationScreen
+                file={capturedDoc.file}
+                previewUrl={capturedDoc.previewUrl}
+                initialData={ocrExtraction.data}
+                isSubmitting={isSavingDoc}
+                onApprove={handleApproveDocument}
+                onReject={handleRejectDocument}
+              />
+            </div>
           )}
 
           {saveDocFeedback && (
