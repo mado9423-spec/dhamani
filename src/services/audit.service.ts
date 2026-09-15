@@ -32,3 +32,42 @@ export async function logAuditEvent(input: LogAuditEventInput): Promise<void> {
     console.error("تعذر تسجيل حدث في سجل التدقيق", error);
   }
 }
+
+export interface AuditLogEntry {
+  id: number;
+  action: string;
+  tableName: string;
+  recordId: string | null;
+  actorType: AuditActorType;
+  oldData: unknown;
+  newData: unknown;
+  createdAt: string;
+}
+
+/**
+ * يجلب سجلات التدقيق المرتبطة بمجموعة سجلات (مثلاً معاملات ومستندات
+ * مواطن واحد). قراءة audit_logs محصورة بسياسة RLS على المشرف/الأدمن —
+ * موظف عادي يحصل على قائمة فارغة، لا خطأ.
+ */
+export async function listAuditLogsForRecords(recordIds: string[]): Promise<AuditLogEntry[]> {
+  if (recordIds.length === 0) return [];
+
+  const { data, error } = await supabase
+    .from("audit_logs")
+    .select("id, action, table_name, record_id, actor_type, old_data, new_data, created_at")
+    .in("record_id", recordIds)
+    .order("created_at", { ascending: false });
+
+  if (error || !data) return [];
+
+  return data.map((row) => ({
+    id: row.id,
+    action: row.action,
+    tableName: row.table_name,
+    recordId: row.record_id,
+    actorType: row.actor_type,
+    oldData: row.old_data,
+    newData: row.new_data,
+    createdAt: row.created_at,
+  }));
+}

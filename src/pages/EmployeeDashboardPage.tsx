@@ -4,7 +4,7 @@ import { Button } from "../components/ui/Button";
 import { TextField } from "../components/ui/TextField";
 import {
   getCurrentEmployee,
-  searchCitizenByPensionNumber,
+  searchCitizens,
   EmployeeProfile,
   CitizenSearchResult,
 } from "../services/employee.service";
@@ -14,8 +14,8 @@ export default function EmployeeDashboardPage() {
   const [employee, setEmployee] = useState<EmployeeProfile | null>(null);
   const [isLoadingEmployee, setIsLoadingEmployee] = useState(true);
 
-  const [pensionNumber, setPensionNumber] = useState("");
-  const [result, setResult] = useState<CitizenSearchResult | null>(null);
+  const [query, setQuery] = useState("");
+  const [results, setResults] = useState<CitizenSearchResult[]>([]);
   const [isSearching, setIsSearching] = useState(false);
   const [searched, setSearched] = useState(false);
 
@@ -32,12 +32,12 @@ export default function EmployeeDashboardPage() {
 
   async function handleSearch(e: FormEvent) {
     e.preventDefault();
-    if (!pensionNumber.trim()) return;
+    if (!query.trim()) return;
 
     setIsSearching(true);
     setSearched(false);
-    const found = await searchCitizenByPensionNumber(pensionNumber);
-    setResult(found);
+    const found = await searchCitizens(query);
+    setResults(found);
     setSearched(true);
     setIsSearching(false);
   }
@@ -70,37 +70,52 @@ export default function EmployeeDashboardPage() {
       <main className="px-6 py-6">
         <form onSubmit={handleSearch} className="flex flex-col gap-3">
           <TextField
-            id="pensionSearch"
-            label="البحث عن مواطن برقم المعاش"
-            placeholder="أدخل رقم المعاش"
-            value={pensionNumber}
-            onChange={(e) => setPensionNumber(e.target.value)}
+            id="citizenSearch"
+            label="البحث عن مواطن"
+            placeholder="رقم المعاش، الرقم الوطني، أو الاسم"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
           />
           <Button type="submit" isLoading={isSearching}>
             بحث
           </Button>
         </form>
 
-        {searched && !result && (
+        {searched && results.length === 0 && (
           <div className="mt-6 rounded-2xl bg-[#FBEAE8] p-4 text-center text-sm font-semibold text-[#C0392B]">
-            لا يوجد مواطن بهذا الرقم في نطاق صلاحياتك
+            لا يوجد مواطن مطابق في نطاق صلاحياتك
           </div>
         )}
 
-        {result && (
-          <div className="mt-6 rounded-2xl border border-[#E2E7EB] bg-white p-5">
-            <p className="text-xs font-semibold text-[#687581]">الاسم الرباعي</p>
-            <p className="mt-1 text-base font-bold text-[#17212B]">{result.fullName}</p>
-            <div className="my-3 h-px bg-[#E2E7EB]" />
-            <p className="text-xs font-semibold text-[#687581]">رقم المعاش</p>
-            <p className="mt-1 text-base font-bold text-[#17212B]">{result.pensionNumber}</p>
-
-            <Button
-              onClick={() => navigate(`/employee/citizens/${result.id}`)}
-              className="mt-5"
-            >
-              عرض التفاصيل الكاملة
-            </Button>
+        {results.length > 0 && (
+          <div className="mt-6 flex flex-col gap-3">
+            {results.map((citizen) => (
+              <button
+                key={citizen.id}
+                onClick={() => navigate(`/employee/citizens/${citizen.id}`)}
+                className="rounded-2xl border border-[#E2E7EB] bg-white p-5 text-right transition-colors active:bg-[#F5F6F7]"
+              >
+                <p className="text-xs font-semibold text-[#687581]">الاسم الرباعي</p>
+                <p className="mt-1 text-base font-bold text-[#17212B]">{citizen.fullName}</p>
+                <div className="my-3 h-px bg-[#E2E7EB]" />
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-xs font-semibold text-[#687581]">رقم المعاش</p>
+                    <p className="mt-1 text-[13px] font-bold text-[#17212B]">
+                      {citizen.pensionNumber}
+                    </p>
+                  </div>
+                  {citizen.nationalId && (
+                    <div>
+                      <p className="text-xs font-semibold text-[#687581]">الرقم الوطني</p>
+                      <p className="mt-1 text-[13px] font-bold text-[#17212B]">
+                        {citizen.nationalId}
+                      </p>
+                    </div>
+                  )}
+                </div>
+              </button>
+            ))}
           </div>
         )}
       </main>

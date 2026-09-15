@@ -14,6 +14,7 @@ export interface CitizenSearchResult {
   id: string;
   fullName: string;
   pensionNumber: string;
+  nationalId: string | null;
   status: string;
   branchId: string;
 }
@@ -48,24 +49,35 @@ export async function getCurrentEmployee(): Promise<EmployeeProfile | null> {
   };
 }
 
-export async function searchCitizenByPensionNumber(
-  pensionNumber: string
-): Promise<CitizenSearchResult | null> {
+/**
+ * بحث موحّد يقبل رقم المعاش أو الرقم الوطني أو الاسم (بحث جزئي).
+ * الأحرف التي لها معنى خاص في صياغة فلتر PostgREST (,()%) تُزال من
+ * المدخل قبل بنائه لمنع أي حقن في الفلتر — نطاق النتائج يبقى محكوماً
+ * بسياسات RLS بغض النظر عن ذلك.
+ */
+export async function searchCitizens(query: string): Promise<CitizenSearchResult[]> {
+  const sanitized = query.trim().replace(/[,()%]/g, "");
+  if (!sanitized) return [];
+
   const { data, error } = await supabase
     .from("citizens")
-    .select("id, full_name, pension_number, status, branch_id")
-    .eq("pension_number", pensionNumber.trim())
-    .maybeSingle();
+    .select("id, full_name, pension_number, national_id, status, branch_id")
+    .or(
+      `pension_number.ilike.%${sanitized}%,national_id.ilike.%${sanitized}%,full_name.ilike.%${sanitized}%`
+    )
+    .order("full_name")
+    .limit(20);
 
-  if (error || !data) return null;
+  if (error || !data) return [];
 
-  return {
-    id: data.id,
-    fullName: data.full_name,
-    pensionNumber: data.pension_number,
-    status: data.status,
-    branchId: data.branch_id,
-  };
+  return data.map((row) => ({
+    id: row.id,
+    fullName: row.full_name,
+    pensionNumber: row.pension_number,
+    nationalId: row.national_id,
+    status: row.status,
+    branchId: row.branch_id,
+  }));
 }
 
 export async function listTransactionTypes(): Promise<TransactionType[]> {
