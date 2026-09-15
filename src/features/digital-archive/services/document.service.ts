@@ -1,4 +1,5 @@
 import { supabase } from "../../../lib/supabaseClient";
+import { logAuditEvent } from "../../../services/audit.service";
 import { DocumentReviewStatus, IntakeSource, VerifiedFields } from "../types/archive.types";
 import { ExtractedDocumentData } from "./ocrService";
 
@@ -65,6 +66,15 @@ export async function createDocument(
   if (error || !data) {
     return { success: false, message: "تعذر حفظ المستند، تحقق من صلاحياتك" };
   }
+
+  await logAuditEvent({
+    actorId: input.approvedBy ?? input.uploadedBy,
+    actorType: "employee",
+    action: "document_approved",
+    tableName: "documents",
+    recordId: data.id,
+    newData: { review_status: input.reviewStatus, verified_data: input.verifiedData },
+  });
 
   return { success: true, documentId: data.id };
 }

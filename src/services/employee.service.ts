@@ -1,4 +1,6 @@
 import { supabase } from "../lib/supabaseClient";
+import { TransactionStatus } from "../components/StatusBadge";
+import { logAuditEvent } from "./audit.service";
 
 export interface EmployeeProfile {
   id: string;
@@ -81,22 +83,69 @@ export async function createTransactionForCitizen(
   citizenId: string,
   branchId: string,
   transactionTypeId: string,
-  notes: string
+  notes: string,
+  employeeId: string
 ): Promise<{ success: boolean; message?: string }> {
   const transactionNumber = `TXN-${Date.now().toString().slice(-8)}`;
 
-  const { error } = await supabase.from("transactions").insert({
-    transaction_number: transactionNumber,
-    citizen_id: citizenId,
-    transaction_type_id: transactionTypeId,
-    branch_id: branchId,
-    status: "pending_review",
-    notes: notes || null,
-  });
+  const { data, error } = await supabase
+    .from("transactions")
+    .insert({
+      transaction_number: transactionNumber,
+      citizen_id: citizenId,
+      transaction_type_id: transactionTypeId,
+      branch_id: branchId,
+      assigned_employee_id: employeeId,
+      status: "pending_review",
+      notes: notes || null,
+    })
+    .select("id")
+    .single();
 
-  if (error) {
+  if (error || !data) {
     return { success: false, message: "تعذر إنشاء المعاملة، تحقق من صلاحياتك" };
   }
+
+  await logAuditEvent({
+    actorId: employeeId,
+    actorType: "employee",
+    action: "created",
+    tableName: "transactions",
+    recordId: data.id,
+    newData: { status: "pending_review", transaction_type_id: transactionTypeId },
+  });
+
+  return { success: true };
+}
+
+/**
+ * المسار الوحيد المسموح به لتغيير transactions.status بعد الإنشاء —
+ * يكتب دائماً سطراً في audit_logs. لا تُحدَّث الحالة مباشرة من أي مكان آخر.
+ */
+export async function transitionTransactionStatus(
+  transactionId: string,
+  previousStatus: TransactionStatus,
+  newStatus: TransactionStatus,
+  employeeId: string
+): Promise<{ success: boolean; message?: string }> {
+  const { error } = await supabase
+    .from("transactions")
+    .update({ status: newStatus, updated_at: new Date().toISOString() })
+    .eq("id", transactionId);
+
+  if (error) {
+    return { success: false, message: "تعذر تحديث حالة المعاملة" };
+  }
+
+  await logAuditEvent({
+    actorId: employeeId,
+    actorType: "employee",
+    action: "transaction_status_changed",
+    tableName: "transactions",
+    recordId: transactionId,
+    oldData: { status: previousStatus },
+    newData: { status: newStatus },
+  });
 
   return { success: true };
 }

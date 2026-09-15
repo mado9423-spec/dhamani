@@ -13,9 +13,11 @@ import {
   getCurrentEmployee,
   listTransactionTypes,
   createTransactionForCitizen,
+  transitionTransactionStatus,
   EmployeeProfile,
   TransactionType,
 } from "../services/employee.service";
+import { WorkflowTracker } from "../components/WorkflowTracker";
 import { IntakePanel } from "../features/digital-archive/components/IntakePanel";
 import { VerificationScreen } from "../features/digital-archive/components/VerificationScreen";
 import { IntakeSource, VerifiedFields } from "../features/digital-archive/types/archive.types";
@@ -47,6 +49,7 @@ export default function EmployeeCitizenDetailPage() {
   const [feedback, setFeedback] = useState<{ type: "success" | "error"; text: string } | null>(
     null
   );
+  const [transitioningId, setTransitioningId] = useState<string | null>(null);
 
   const [showIntake, setShowIntake] = useState(false);
   const [capturedDoc, setCapturedDoc] = useState<CapturedDocument | null>(null);
@@ -151,7 +154,7 @@ export default function EmployeeCitizenDetailPage() {
   }, [citizenId]);
 
   async function handleCreateTransaction() {
-    if (!citizen || !selectedTypeId) return;
+    if (!citizen || !selectedTypeId || !employee) return;
     setIsCreating(true);
     setFeedback(null);
 
@@ -159,7 +162,8 @@ export default function EmployeeCitizenDetailPage() {
       citizen.id,
       citizen.branch_id,
       selectedTypeId,
-      notes
+      notes,
+      employee.id
     );
 
     setIsCreating(false);
@@ -173,6 +177,25 @@ export default function EmployeeCitizenDetailPage() {
     setSelectedTypeId("");
     setNotes("");
     await loadAll();
+  }
+
+  async function handleTransitionStatus(
+    transactionId: string,
+    previousStatus: TransactionStatus,
+    newStatus: TransactionStatus
+  ) {
+    if (!employee) return;
+    setTransitioningId(transactionId);
+    const result = await transitionTransactionStatus(
+      transactionId,
+      previousStatus,
+      newStatus,
+      employee.id
+    );
+    setTransitioningId(null);
+    if (result.success) {
+      await loadAll();
+    }
   }
 
   if (isLoading) {
@@ -325,18 +348,55 @@ export default function EmployeeCitizenDetailPage() {
           {transactions.length === 0 ? (
             <p className="text-[13px] font-medium text-[#9CA3AF]">لا توجد معاملات</p>
           ) : (
-            <div className="flex flex-col gap-2">
-              {transactions.map((t) => (
-                <div
-                  key={t.id}
-                  className="flex items-center justify-between rounded-xl border border-[#E2E7EB] bg-white p-3"
-                >
-                  <span className="text-[13px] font-semibold text-[#17212B]">
-                    {t.transaction_types?.name_ar ?? "معاملة"}
-                  </span>
-                  <StatusBadge status={t.status as TransactionStatus} />
-                </div>
-              ))}
+            <div className="flex flex-col gap-3">
+              {transactions.map((t) => {
+                const status = t.status as TransactionStatus;
+                const isTransitioning = transitioningId === t.id;
+                return (
+                  <div key={t.id} className="rounded-xl border border-[#E2E7EB] bg-white p-3">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[13px] font-semibold text-[#17212B]">
+                        {t.transaction_types?.name_ar ?? "معاملة"}
+                      </span>
+                      <StatusBadge status={status} />
+                    </div>
+
+                    <div className="mt-3">
+                      <WorkflowTracker status={status} />
+                    </div>
+
+                    {(status === "pending_review" || status === "accepted") && (
+                      <div className="mt-3 flex gap-2">
+                        {status === "pending_review" && (
+                          <button
+                            onClick={() => handleTransitionStatus(t.id, status, "accepted")}
+                            disabled={isTransitioning}
+                            className="h-9 flex-1 rounded-lg bg-[#123F63] text-[12px] font-bold text-white transition-opacity disabled:opacity-50"
+                          >
+                            قبول
+                          </button>
+                        )}
+                        {status === "accepted" && (
+                          <button
+                            onClick={() => handleTransitionStatus(t.id, status, "completed")}
+                            disabled={isTransitioning}
+                            className="h-9 flex-1 rounded-lg bg-[#123F63] text-[12px] font-bold text-white transition-opacity disabled:opacity-50"
+                          >
+                            إكمال
+                          </button>
+                        )}
+                        <button
+                          onClick={() => handleTransitionStatus(t.id, status, "rejected")}
+                          disabled={isTransitioning}
+                          className="h-9 flex-1 rounded-lg border border-[#E2E7EB] text-[12px] font-bold text-[#C0392B] transition-opacity disabled:opacity-50"
+                        >
+                          رفض
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
             </div>
           )}
         </section>
