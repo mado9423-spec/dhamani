@@ -1,0 +1,19 @@
+{
+  "name": "survive-7-nights",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Survive: 7 Nights — a 2D top-down survival shooter built with Phaser, TypeScript, and Vite.",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "phaser": "^3.80.1"
+  },
+  "devDependencies": {
+    "typescript": "^5.5.3",
+    "vite": "^5.4.0"
+  }
+}
