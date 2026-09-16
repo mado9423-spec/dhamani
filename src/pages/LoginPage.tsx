@@ -88,7 +88,7 @@ export default function LoginPage() {
       )}
 
       <div className="flex flex-1 flex-col justify-center px-6 py-8">
-        <div className="mb-10 flex flex-col items-center text-center">
+        <div className="mb-10 flex animate-fade-in-up flex-col items-center text-center">
           <Logo size="lg" className="mb-4" />
           <h1 className="text-2xl font-extrabold text-[#17212B]">ضماني</h1>
           <p className="mt-1 text-sm font-medium text-[#687581]">
@@ -100,7 +100,7 @@ export default function LoginPage() {
         </div>
 
         {status === "success" ? (
-          <div className="rounded-2xl bg-[#EAF7F0] p-6 text-center">
+          <div className="animate-scale-in rounded-2xl bg-[#EAF7F0] p-6 text-center">
             <p className="text-base font-semibold text-[#16803C]">
               تم تسجيل الدخول بنجاح
             </p>
@@ -109,7 +109,10 @@ export default function LoginPage() {
             </p>
           </div>
         ) : (
-          <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+          <form
+            onSubmit={handleSubmit}
+            className="flex animate-fade-in-up flex-col gap-4 [animation-delay:100ms]"
+          >
             <TextField
               id="fullName"
               label="الاسم الرباعي"
@@ -141,7 +144,7 @@ export default function LoginPage() {
             />
 
             {status === "error" && (
-              <div className="rounded-xl bg-[#FBEAE8] p-3 text-center text-[13px] font-semibold text-[#C0392B]">
+              <div className="animate-fade-in-up rounded-xl bg-[#FBEAE8] p-3 text-center text-[13px] font-semibold text-[#C0392B]">
                 {errorMessage}
               </div>
             )}

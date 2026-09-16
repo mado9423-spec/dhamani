@@ -42,13 +42,13 @@ export default function TransactionsPage() {
         {isLoading && (
           <div className="flex flex-col gap-3">
             {[1, 2, 3].map((i) => (
-              <div key={i} className="h-24 animate-pulse rounded-2xl bg-[#E2E7EB]" />
+              <div key={i} className="h-24 animate-shimmer rounded-2xl skeleton-shimmer" />
             ))}
           </div>
         )}
 
         {!isLoading && visibleTransactions.length === 0 && (
-          <div className="flex flex-col items-center gap-2 pt-16 text-center">
+          <div className="flex animate-fade-in-up flex-col items-center gap-2 pt-16 text-center">
             <div className="flex h-14 w-14 items-center justify-center rounded-full bg-[#E8EEF4] text-2xl">
               📄
             </div>

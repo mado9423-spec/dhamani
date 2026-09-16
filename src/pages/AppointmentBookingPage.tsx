@@ -98,8 +98,8 @@ export default function AppointmentBookingPage() {
 
       <main className="px-6 py-6">
         {isDone ? (
-          <div className="flex flex-col items-center gap-3 pt-10 text-center">
-            <div className="flex h-16 w-16 items-center justify-center rounded-full bg-[#EAF7F0] text-3xl text-[#16803C]">
+          <div className="flex animate-fade-in-up flex-col items-center gap-3 pt-10 text-center">
+            <div className="flex h-16 w-16 animate-scale-in items-center justify-center rounded-full bg-[#EAF7F0] text-3xl text-[#16803C]">
               ✓
             </div>
             <p className="text-lg font-extrabold text-[#17212B]">
@@ -119,7 +119,7 @@ export default function AppointmentBookingPage() {
             <p className="text-sm font-semibold text-[#17212B]">اختر الموعد المناسب</p>
 
             {errorMessage && (
-              <div className="rounded-xl bg-[#FBEAE8] p-3 text-center text-[13px] font-semibold text-[#C0392B]">
+              <div className="animate-fade-in-up rounded-xl bg-[#FBEAE8] p-3 text-center text-[13px] font-semibold text-[#C0392B]">
                 {errorMessage}
               </div>
             )}

@@ -20,15 +20,17 @@ export function SplashScreen({ onFinish }: SplashScreenProps) {
   return (
     <div
       dir="rtl"
-      className={`fixed inset-0 z-50 flex flex-col items-center justify-center bg-[#F6F8FA] font-cairo transition-opacity duration-300 ${
-        visible ? "opacity-100" : "pointer-events-none opacity-0"
+      className={`fixed inset-0 z-50 flex flex-col items-center justify-center bg-[#F6F8FA] font-cairo transition-all duration-300 ${
+        visible ? "opacity-100" : "pointer-events-none scale-105 opacity-0"
       }`}
     >
-      <Logo size="lg" />
-      <p className="mt-5 text-base font-bold text-[#17212B]">
+      <div className="animate-scale-in">
+        <Logo size="lg" />
+      </div>
+      <p className="mt-5 animate-fade-in-up text-base font-bold text-[#17212B] [animation-delay:150ms]">
         تطبيق توثيق المعلومات
       </p>
-      <p className="mt-1 text-sm font-medium text-[#687581]">
+      <p className="mt-1 animate-fade-in-up text-sm font-medium text-[#687581] [animation-delay:250ms]">
         صندوق الضمان الاجتماعي
       </p>
     </div>

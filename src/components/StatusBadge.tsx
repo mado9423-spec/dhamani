@@ -21,7 +21,7 @@ export function StatusBadge({ status }: { status: TransactionStatus }) {
 
   return (
     <span
-      className="inline-flex items-center rounded-full px-3 py-1 text-[12px] font-bold"
+      className="inline-flex animate-scale-in items-center rounded-full px-3 py-1 text-[12px] font-bold"
       style={{ backgroundColor: config.bg, color: config.text }}
     >
       {config.label}

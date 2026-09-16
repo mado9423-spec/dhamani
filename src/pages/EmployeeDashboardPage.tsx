@@ -69,7 +69,7 @@ export default function EmployeeDashboardPage() {
 
   return (
     <div dir="rtl" className="min-h-screen bg-[#F5F6F7] font-cairo">
-      <header className="bg-[#17212B] px-6 py-5">
+      <header className="animate-fade-in-up bg-[#17212B] px-6 py-5">
         <div className="flex items-start justify-between">
           <div>
             <p className="text-xs font-semibold text-white/60">لوحة الموظف</p>
@@ -139,11 +139,12 @@ export default function EmployeeDashboardPage() {
 
         {results.length > 0 && (
           <div className="mt-6 flex flex-col gap-3">
-            {results.map((citizen) => (
+            {results.map((citizen, index) => (
               <button
                 key={citizen.id}
                 onClick={() => handleResultClick(citizen.id)}
-                className="rounded-2xl border border-[#E2E7EB] bg-white p-5 text-right transition-colors active:bg-[#F5F6F7]"
+                className="animate-fade-in-up rounded-2xl border border-[#E2E7EB] bg-white p-5 text-right shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md active:bg-[#F5F6F7]"
+                style={{ animationDelay: `${index * 40}ms` }}
               >
                 <p className="text-xs font-semibold text-[#687581]">الاسم الرباعي</p>
                 <p className="mt-1 text-base font-bold text-[#17212B]">{citizen.fullName}</p>
