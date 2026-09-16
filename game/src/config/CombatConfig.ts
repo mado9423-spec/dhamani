@@ -7,9 +7,10 @@ export const PROJECTILE_RADIUS = 5;
 export const PROJECTILE_MAX_DISTANCE = 440;
 export const PROJECTILE_POOL_SIZE = 40;
 
-// Enemies (must stay above the highest concurrent count a wave/boss
-// can reach — Night 1's biggest wave is 25, plus the boss).
-export const ENEMY_POOL_SIZE = 30;
+// Enemies (headroom above the highest concurrent count a wave/boss can
+// realistically reach — Night 7's biggest wave alone spawns 75 over
+// its duration, though not all concurrently alive).
+export const ENEMY_POOL_SIZE = 40;
 
 // Spawn enemies just outside the visible viewport, regardless of
 // direction from the player.

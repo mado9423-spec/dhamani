@@ -1,5 +1,5 @@
 export type EnemyType = "walker" | "fast" | "tank";
-export type EnemyTypeId = EnemyType | "boss";
+export type EnemyTypeId = EnemyType | "boss" | "finalBoss";
 
 export interface EnemyStats {
   health: number;
@@ -70,9 +70,9 @@ export const ENEMY_DEFINITIONS: Record<EnemyType, EnemyDefinition> = {
 
 export const ENEMY_TYPES: EnemyType[] = ["walker", "fast", "tank"];
 
-// Boss isn't part of ENEMY_DEFINITIONS/ENEMY_TYPES since it's never
-// picked by random wave spawning — NightManager spawns it explicitly
-// once all of a night's waves are cleared.
+// Boss/finalBoss aren't part of ENEMY_DEFINITIONS/ENEMY_TYPES since
+// they're never picked by random wave spawning — NightManager spawns
+// them explicitly once a night's waves are cleared.
 export const BOSS_DEFINITION: EnemyDefinition = {
   stats: {
     health: 600,
@@ -87,6 +87,29 @@ export const BOSS_DEFINITION: EnemyDefinition = {
   visual: { radius: 46, color: 0x9333ea, strokeColor: 0x2e0a4d, strokeWidth: 5 },
 };
 
+// The Night 7 capstone. A distinct (bigger, tougher) definition rather
+// than just BOSS_DEFINITION with a bonus multiplier, so it also reads
+// as visually different (biggest, darkest) — not just "boss but more".
+export const FINAL_BOSS_DEFINITION: EnemyDefinition = {
+  stats: {
+    health: 900,
+    maxHealth: 900,
+    speed: 65,
+    damage: 34,
+    attackRange: 78,
+    attackCooldown: 1.0,
+    xpReward: 180,
+    coinReward: 70,
+  },
+  visual: { radius: 56, color: 0x7f1d1d, strokeColor: 0x1a0505, strokeWidth: 6 },
+};
+
 export function getEnemyDefinition(type: EnemyTypeId): EnemyDefinition {
-  return type === "boss" ? BOSS_DEFINITION : ENEMY_DEFINITIONS[type];
+  if (type === "boss") {
+    return BOSS_DEFINITION;
+  }
+  if (type === "finalBoss") {
+    return FINAL_BOSS_DEFINITION;
+  }
+  return ENEMY_DEFINITIONS[type];
 }

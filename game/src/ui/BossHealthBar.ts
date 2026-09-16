@@ -37,7 +37,9 @@ export class BossHealthBar {
       .setVisible(false);
   }
 
-  show(): void {
+  show(isFinalBoss = false): void {
+    this.label.setText(isFinalBoss ? "FINAL BOSS" : "BOSS");
+    this.fill.setFillStyle(isFinalBoss ? COLORS.finalBossHealthFill : COLORS.bossHealthFill);
     this.label.setVisible(true);
     this.background.setVisible(true);
     this.fill.setVisible(true);

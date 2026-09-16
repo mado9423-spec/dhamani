@@ -6,12 +6,20 @@ import { Player, PlayerEvents } from "../entities/Player";
 import { InputManager } from "../input/InputManager";
 import { CombatSystem } from "../systems/CombatSystem";
 import { EnemyManager } from "../systems/EnemyManager";
-import { BossStartPayload, NightManager, NightManagerEvents, WaveIntroPayload } from "../systems/NightManager";
+import {
+  BossIntroPayload,
+  BossStartPayload,
+  NightCompletePayload,
+  NightManager,
+  NightManagerEvents,
+  WaveIntroPayload,
+} from "../systems/NightManager";
 import { Announcement } from "../ui/Announcement";
 import { BossHealthBar } from "../ui/BossHealthBar";
 import { DeathScreen } from "../ui/DeathScreen";
 import { HUD } from "../ui/HUD";
 import { UpgradeSelection } from "../ui/UpgradeSelection";
+import { VictoryScreen } from "../ui/VictoryScreen";
 
 const UPGRADE_CHOICES_SHOWN = 3;
 
@@ -26,6 +34,7 @@ export class MainScene extends Phaser.Scene {
   private announcement!: Announcement;
   private bossHealthBar!: BossHealthBar;
   private upgradeSelection!: UpgradeSelection;
+  private victoryScreen!: VictoryScreen;
   private readonly worldBounds = new Phaser.Geom.Rectangle(0, 0, WORLD_WIDTH, WORLD_HEIGHT);
   private paused = false;
   private pendingUpgradeChoices = 0;
@@ -44,6 +53,7 @@ export class MainScene extends Phaser.Scene {
     this.announcement = new Announcement(this);
     this.bossHealthBar = new BossHealthBar(this);
     this.upgradeSelection = new UpgradeSelection(this);
+    this.victoryScreen = new VictoryScreen(this, GAME_WIDTH, GAME_HEIGHT);
 
     this.enemyManager = new EnemyManager(this);
     this.combatSystem = new CombatSystem(this, this.enemyManager);
@@ -63,6 +73,7 @@ export class MainScene extends Phaser.Scene {
       this.announcement.destroy();
       this.bossHealthBar.destroy();
       this.upgradeSelection.destroy();
+      this.victoryScreen.destroy();
       this.inputManager.destroy();
     });
   }
@@ -111,25 +122,33 @@ export class MainScene extends Phaser.Scene {
   }
 
   private wireNightEvents(): void {
-    this.nightManager.on(NightManagerEvents.WAVE_INTRO, ({ waveNumber, totalWaves }: WaveIntroPayload) => {
-      this.announcement.show(`Night 1 — Wave ${waveNumber}/${totalWaves}`);
-      this.hud.setWaveStatus(`Night 1 · Wave ${waveNumber}/${totalWaves}`);
+    this.nightManager.on(NightManagerEvents.WAVE_INTRO, ({ nightNumber, waveNumber, totalWaves }: WaveIntroPayload) => {
+      this.announcement.show(`Night ${nightNumber} — Wave ${waveNumber}/${totalWaves}`);
+      this.hud.setWaveStatus(`Night ${nightNumber} · Wave ${waveNumber}/${totalWaves}`);
     });
 
-    this.nightManager.on(NightManagerEvents.BOSS_INTRO, () => {
-      this.announcement.show("BOSS INCOMING");
-      this.hud.setWaveStatus("Night 1 · Boss incoming");
+    this.nightManager.on(NightManagerEvents.BOSS_INTRO, ({ nightNumber, isFinalNight }: BossIntroPayload) => {
+      this.announcement.show(isFinalNight ? "FINAL BOSS INCOMING" : "BOSS INCOMING");
+      this.hud.setWaveStatus(`Night ${nightNumber} · Boss incoming`);
     });
 
-    this.nightManager.on(NightManagerEvents.BOSS_START, (_payload: BossStartPayload) => {
-      this.hud.setWaveStatus("Night 1 · BOSS");
-      this.bossHealthBar.show();
+    this.nightManager.on(NightManagerEvents.BOSS_START, ({ nightNumber, isFinalNight }: BossStartPayload) => {
+      this.hud.setWaveStatus(`Night ${nightNumber} · ${isFinalNight ? "FINAL BOSS" : "BOSS"}`);
+      this.bossHealthBar.show(isFinalNight);
     });
 
-    this.nightManager.on(NightManagerEvents.COMPLETE, () => {
-      this.announcement.show("Night 1 Complete!");
-      this.hud.setWaveStatus("Night 1 · Complete");
+    this.nightManager.on(NightManagerEvents.NIGHT_COMPLETE, ({ nightNumber, isFinalNight }: NightCompletePayload) => {
       this.bossHealthBar.hide();
+
+      if (isFinalNight) {
+        this.announcement.show("Victory!");
+        this.hud.setWaveStatus("Campaign Complete · Victory!");
+        this.victoryScreen.show();
+        return;
+      }
+
+      this.announcement.show(`Night ${nightNumber} Complete!`);
+      this.hud.setWaveStatus(`Night ${nightNumber} · Complete`);
     });
   }
 }

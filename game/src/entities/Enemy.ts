@@ -60,11 +60,18 @@ export class Enemy extends Phaser.GameObjects.Container {
     return this.stats.coinReward;
   }
 
-  spawn(type: EnemyTypeId, x: number, y: number): void {
+  spawn(type: EnemyTypeId, x: number, y: number, difficultyMultiplier = 1): void {
     const definition: EnemyDefinition = getEnemyDefinition(type);
 
     this.type = type;
-    this.stats = { ...definition.stats };
+    this.stats = {
+      ...definition.stats,
+      health: Math.round(definition.stats.health * difficultyMultiplier),
+      maxHealth: Math.round(definition.stats.maxHealth * difficultyMultiplier),
+      damage: Math.round(definition.stats.damage * difficultyMultiplier),
+      xpReward: Math.round(definition.stats.xpReward * difficultyMultiplier),
+      coinReward: Math.round(definition.stats.coinReward * difficultyMultiplier),
+    };
     this.attackTimer = 0;
     this.dying = false;
 

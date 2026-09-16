@@ -22,9 +22,9 @@ export class EnemyManager {
     this.pool.forEachActive((enemy) => enemy.update(deltaSeconds, player, worldBounds));
   }
 
-  spawnAt(type: EnemyTypeId, x: number, y: number): Enemy {
+  spawnAt(type: EnemyTypeId, x: number, y: number, difficultyMultiplier = 1): Enemy {
     const enemy = this.pool.acquire();
-    enemy.spawn(type, x, y);
+    enemy.spawn(type, x, y, difficultyMultiplier);
     return enemy;
   }
 

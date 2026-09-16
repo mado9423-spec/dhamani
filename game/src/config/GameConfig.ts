@@ -28,6 +28,7 @@ export const COLORS = {
   enemyHitFlash: 0xffffff,
   xpPickup: 0x4fd1c5,
   bossHealthFill: 0xb83280,
+  finalBossHealthFill: 0x7f1d1d,
 } as const;
 
 export function createGameConfig(scenes: Phaser.Types.Scenes.SceneType[]): Phaser.Types.Core.GameConfig {
