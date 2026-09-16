@@ -1,14 +1,11 @@
 import Phaser from "phaser";
 import { GAME_HEIGHT, GAME_WIDTH } from "../config/GameConfig";
+import { SafeAreaInsets } from "../utils/SafeArea";
 import { FireButton } from "./FireButton";
 import { KeyboardInput } from "./KeyboardInput";
 import { VirtualJoystick } from "./VirtualJoystick";
 
-// Bottom-left 65% of the screen height, so the joystick never appears
-// under the HUD text pinned to the top-left corner.
-const JOYSTICK_ZONE = new Phaser.Geom.Rectangle(0, GAME_HEIGHT * 0.35, GAME_WIDTH * 0.5, GAME_HEIGHT * 0.65);
-const FIRE_BUTTON_X = GAME_WIDTH - 80;
-const FIRE_BUTTON_Y = GAME_HEIGHT - 80;
+const FIRE_BUTTON_MARGIN = 80;
 
 /**
  * Unifies keyboard and on-screen touch controls behind one API so
@@ -21,12 +18,19 @@ export class InputManager {
   private readonly joystick: VirtualJoystick | null;
   private readonly fireButton: FireButton | null;
 
-  constructor(scene: Phaser.Scene) {
+  constructor(scene: Phaser.Scene, safeAreaInsets: SafeAreaInsets) {
     this.keyboard = new KeyboardInput(scene);
 
     const supportsTouch = scene.sys.game.device.input.touch;
-    this.joystick = supportsTouch ? new VirtualJoystick(scene, JOYSTICK_ZONE) : null;
-    this.fireButton = supportsTouch ? new FireButton(scene, FIRE_BUTTON_X, FIRE_BUTTON_Y) : null;
+    if (!supportsTouch) {
+      this.joystick = null;
+      this.fireButton = null;
+      return;
+    }
+
+    this.joystick = new VirtualJoystick(scene, InputManager.joystickZone(safeAreaInsets));
+    const { x, y } = InputManager.fireButtonPosition(safeAreaInsets);
+    this.fireButton = new FireButton(scene, x, y);
   }
 
   getMovementVector(): Phaser.Math.Vector2 {
@@ -40,8 +44,34 @@ export class InputManager {
     return this.fireButton?.isDown ?? false;
   }
 
+  /** Re-anchors touch controls around the current safe area (e.g. after rotating). */
+  updateSafeArea(safeAreaInsets: SafeAreaInsets): void {
+    this.joystick?.setZone(InputManager.joystickZone(safeAreaInsets));
+    const { x, y } = InputManager.fireButtonPosition(safeAreaInsets);
+    this.fireButton?.setPosition(x, y);
+  }
+
   destroy(): void {
     this.joystick?.destroy();
     this.fireButton?.destroy();
+  }
+
+  // Bottom-left 65% of the screen height, inset from the left/bottom
+  // device edges so the joystick never appears under a notch/gesture
+  // nav bar, and never under the HUD text pinned to the top-left.
+  private static joystickZone(insets: SafeAreaInsets): Phaser.Geom.Rectangle {
+    return new Phaser.Geom.Rectangle(
+      insets.left,
+      GAME_HEIGHT * 0.35,
+      GAME_WIDTH * 0.5 - insets.left,
+      GAME_HEIGHT * 0.65 - insets.bottom
+    );
+  }
+
+  private static fireButtonPosition(insets: SafeAreaInsets): { x: number; y: number } {
+    return {
+      x: GAME_WIDTH - FIRE_BUTTON_MARGIN - insets.right,
+      y: GAME_HEIGHT - FIRE_BUTTON_MARGIN - insets.bottom,
+    };
   }
 }

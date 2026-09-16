@@ -20,7 +20,7 @@ export class VirtualJoystick {
   private readonly origin = new Phaser.Math.Vector2();
   private readonly vector = new Phaser.Math.Vector2();
 
-  constructor(scene: Phaser.Scene, zone: Phaser.Geom.Rectangle, maxRadius = 55) {
+  constructor(scene: Phaser.Scene, zone: Phaser.Geom.Rectangle, maxRadius = 62) {
     this.scene = scene;
     this.zone = zone;
     this.maxRadius = maxRadius;
@@ -49,6 +49,11 @@ export class VirtualJoystick {
 
   getVector(): Phaser.Math.Vector2 {
     return this.vector.clone();
+  }
+
+  /** Re-anchors the touch zone (e.g. after a safe-area/orientation change). Only affects future touches. */
+  setZone(zone: Phaser.Geom.Rectangle): void {
+    this.zone.setTo(zone.x, zone.y, zone.width, zone.height);
   }
 
   destroy(): void {

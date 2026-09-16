@@ -15,7 +15,7 @@ export class FireButton {
 
   private pointerId: number | null = null;
 
-  constructor(scene: Phaser.Scene, x: number, y: number, radius = 46) {
+  constructor(scene: Phaser.Scene, x: number, y: number, radius = 54) {
     this.scene = scene;
     this.hitArea = new Phaser.Geom.Circle(x, y, radius);
 
@@ -47,6 +47,14 @@ export class FireButton {
 
   get isDown(): boolean {
     return this.pointerId !== null;
+  }
+
+  /** Re-anchors the button (e.g. after a safe-area/orientation change). */
+  setPosition(x: number, y: number): void {
+    this.hitArea.x = x;
+    this.hitArea.y = y;
+    this.circle.setPosition(x, y);
+    this.icon.setPosition(x, y);
   }
 
   destroy(): void {

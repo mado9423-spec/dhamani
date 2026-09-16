@@ -1,4 +1,5 @@
 import Phaser from "phaser";
+import { QualitySettings } from "./QualityConfig";
 
 export const GAME_WIDTH = 960;
 export const GAME_HEIGHT = 540;
@@ -31,7 +32,10 @@ export const COLORS = {
   finalBossHealthFill: 0x7f1d1d,
 } as const;
 
-export function createGameConfig(scenes: Phaser.Types.Scenes.SceneType[]): Phaser.Types.Core.GameConfig {
+export function createGameConfig(
+  scenes: Phaser.Types.Scenes.SceneType[],
+  quality: QualitySettings
+): Phaser.Types.Core.GameConfig {
   return {
     type: Phaser.AUTO,
     parent: "app",
@@ -46,6 +50,13 @@ export function createGameConfig(scenes: Phaser.Types.Scenes.SceneType[]): Phase
       // Mouse/keyboard pointer + up to two simultaneous touches
       // (virtual joystick and fire button at the same time).
       activePointers: 3,
+    },
+    // WebGL context options only take effect at construction time —
+    // quality can't be hot-swapped without recreating the renderer.
+    antialias: quality.antialias,
+    antialiasGL: quality.antialias,
+    render: {
+      powerPreference: quality.powerPreference,
     },
     scene: scenes,
   };

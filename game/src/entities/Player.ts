@@ -1,6 +1,7 @@
 import Phaser from "phaser";
 import { COLORS } from "../config/GameConfig";
 import { DEFAULT_PLAYER_STATS, getExperienceForLevel, PlayerStats } from "../config/PlayerConfig";
+import { QualitySettings } from "../config/QualityConfig";
 import { MovementSystem } from "../systems/MovementSystem";
 import { clamp } from "../utils/MathUtils";
 
@@ -41,11 +42,13 @@ export class Player extends Phaser.GameObjects.Container {
   // Named bodyShape (not "body") because GameObject already reserves
   // `body` for an Arcade/Matter physics body reference.
   private readonly bodyShape: Phaser.GameObjects.Triangle;
+  private readonly quality: QualitySettings;
   private dead = false;
 
-  constructor(scene: Phaser.Scene, x: number, y: number) {
+  constructor(scene: Phaser.Scene, x: number, y: number, quality: QualitySettings) {
     super(scene, x, y);
 
+    this.quality = quality;
     this.stats = { ...DEFAULT_PLAYER_STATS };
 
     this.bodyShape = scene.add.triangle(
@@ -175,7 +178,9 @@ export class Player extends Phaser.GameObjects.Container {
 
   private playDamageFeedback(): void {
     this.bodyShape.setFillStyle(COLORS.playerDamageFlash);
-    this.scene.cameras.main.shake(120, 0.004);
+    if (this.quality.screenShakeEnabled) {
+      this.scene.cameras.main.shake(120, 0.004 * this.quality.screenShakeIntensityScale);
+    }
     this.scene.time.delayedCall(DAMAGE_FLASH_MS, () => {
       if (!this.dead) {
         this.bodyShape.setFillStyle(COLORS.player);

@@ -2,18 +2,19 @@ import Phaser from "phaser";
 import { COLORS, GAME_WIDTH } from "../config/GameConfig";
 import { HealthChangedPayload, Player, PlayerEvents, XpChangedPayload } from "../entities/Player";
 import { clamp } from "../utils/MathUtils";
+import { SafeAreaInsets } from "../utils/SafeArea";
 
 const BAR_WIDTH = 200;
 const HEALTH_BAR_HEIGHT = 14;
 const XP_BAR_HEIGHT = 6;
-const BAR_X = 16;
-const HEALTH_BAR_Y = 60;
 const LOW_HEALTH_RATIO = 0.3;
 
 /**
  * Screen-space overlay: title/hint, health bar, XP bar + level, and
  * coin count. Stays fixed to the camera and reacts to Player events
- * rather than polling stats every frame.
+ * rather than polling stats every frame. Anchor positions are offset
+ * once at construction by the device's safe-area insets, so text
+ * doesn't sit under a notch/status-bar cutout.
  */
 export class HUD {
   private readonly player: Player;
@@ -30,61 +31,66 @@ export class HUD {
   private readonly coinsText: Phaser.GameObjects.Text;
   private readonly waveStatusText: Phaser.GameObjects.Text;
 
-  constructor(scene: Phaser.Scene, player: Player) {
+  constructor(scene: Phaser.Scene, player: Player, safeAreaInsets: SafeAreaInsets) {
     this.player = player;
 
+    const barX = 16 + safeAreaInsets.left;
+    const topY = safeAreaInsets.top;
+    const healthBarY = 60 + topY;
+    const coinsRightX = GAME_WIDTH - safeAreaInsets.right;
+
     this.title = scene.add
-      .text(BAR_X, 12, "Survive: 7 Nights", { fontFamily: "monospace", fontSize: "20px", color: "#e6fffb" })
+      .text(barX, 12 + topY, "Survive: 7 Nights", { fontFamily: "monospace", fontSize: "20px", color: "#e6fffb" })
       .setScrollFactor(0)
       .setDepth(2000);
 
     this.hint = scene.add
-      .text(BAR_X, 36, "Move: WASD / Arrows", { fontFamily: "monospace", fontSize: "12px", color: "#8892a6" })
+      .text(barX, 36 + topY, "Move: WASD / Arrows", { fontFamily: "monospace", fontSize: "12px", color: "#8892a6" })
       .setScrollFactor(0)
       .setDepth(2000);
 
     scene.add
-      .rectangle(BAR_X, HEALTH_BAR_Y, BAR_WIDTH, HEALTH_BAR_HEIGHT, COLORS.healthBarBg)
+      .rectangle(barX, healthBarY, BAR_WIDTH, HEALTH_BAR_HEIGHT, COLORS.healthBarBg)
       .setOrigin(0, 0)
       .setScrollFactor(0)
       .setDepth(2000);
     this.healthBarFill = scene.add
-      .rectangle(BAR_X, HEALTH_BAR_Y, BAR_WIDTH, HEALTH_BAR_HEIGHT, COLORS.healthBarFill)
+      .rectangle(barX, healthBarY, BAR_WIDTH, HEALTH_BAR_HEIGHT, COLORS.healthBarFill)
       .setOrigin(0, 0)
       .setScrollFactor(0)
       .setDepth(2001);
     this.healthText = scene.add
-      .text(BAR_X + BAR_WIDTH + 8, HEALTH_BAR_Y - 1, "", { fontFamily: "monospace", fontSize: "12px", color: "#e6fffb" })
+      .text(barX + BAR_WIDTH + 8, healthBarY - 1, "", { fontFamily: "monospace", fontSize: "12px", color: "#e6fffb" })
       .setScrollFactor(0)
       .setDepth(2001);
 
-    const xpBarY = HEALTH_BAR_Y + HEALTH_BAR_HEIGHT + 6;
+    const xpBarY = healthBarY + HEALTH_BAR_HEIGHT + 6;
     scene.add
-      .rectangle(BAR_X, xpBarY, BAR_WIDTH, XP_BAR_HEIGHT, COLORS.xpBarBg)
+      .rectangle(barX, xpBarY, BAR_WIDTH, XP_BAR_HEIGHT, COLORS.xpBarBg)
       .setOrigin(0, 0)
       .setScrollFactor(0)
       .setDepth(2000);
     this.xpBarFill = scene.add
-      .rectangle(BAR_X, xpBarY, 0, XP_BAR_HEIGHT, COLORS.xpBarFill)
+      .rectangle(barX, xpBarY, 0, XP_BAR_HEIGHT, COLORS.xpBarFill)
       .setOrigin(0, 0)
       .setScrollFactor(0)
       .setDepth(2001);
     this.levelText = scene.add
-      .text(BAR_X + BAR_WIDTH + 8, xpBarY - 4, "", { fontFamily: "monospace", fontSize: "12px", color: "#8892a6" })
+      .text(barX + BAR_WIDTH + 8, xpBarY - 4, "", { fontFamily: "monospace", fontSize: "12px", color: "#8892a6" })
       .setScrollFactor(0)
       .setDepth(2001);
 
     scene.add
-      .circle(GAME_WIDTH - 96, 22, 7, COLORS.coin)
+      .circle(coinsRightX - 96, 22 + topY, 7, COLORS.coin)
       .setScrollFactor(0)
       .setDepth(2000);
     this.coinsText = scene.add
-      .text(GAME_WIDTH - 80, 14, "", { fontFamily: "monospace", fontSize: "16px", color: "#ffd54f" })
+      .text(coinsRightX - 80, 14 + topY, "", { fontFamily: "monospace", fontSize: "16px", color: "#ffd54f" })
       .setScrollFactor(0)
       .setDepth(2000);
 
     this.waveStatusText = scene.add
-      .text(BAR_X, 94, "", { fontFamily: "monospace", fontSize: "12px", color: "#8892a6" })
+      .text(barX, 94 + topY, "", { fontFamily: "monospace", fontSize: "12px", color: "#8892a6" })
       .setScrollFactor(0)
       .setDepth(2000);
 

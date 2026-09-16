@@ -1,5 +1,5 @@
 import Phaser from "phaser";
-import { DAMAGE_NUMBER_POOL_SIZE, HIT_EFFECT_POOL_SIZE } from "../config/CombatConfig";
+import { QualitySettings } from "../config/QualityConfig";
 import { DamageNumber } from "../entities/DamageNumber";
 import { HitEffect } from "../entities/HitEffect";
 import { ObjectPool } from "./ObjectPool";
@@ -9,14 +9,16 @@ import { ObjectPool } from "./ObjectPool";
  * hit bursts). Pooled (rather than plain create/destroy) so a high
  * fire rate can't create unbounded GameObjects — a burst beyond the
  * pool size just silently skips the extra visual, never gameplay.
+ * Pool sizes come from the active quality tier (cosmetic-only, never
+ * affects enemy/projectile/pickup pools).
  */
 export class EffectsManager {
   private readonly damageNumbers: ObjectPool<DamageNumber>;
   private readonly hitEffects: ObjectPool<HitEffect>;
 
-  constructor(scene: Phaser.Scene) {
-    this.damageNumbers = new ObjectPool(() => new DamageNumber(scene), DAMAGE_NUMBER_POOL_SIZE);
-    this.hitEffects = new ObjectPool(() => new HitEffect(scene), HIT_EFFECT_POOL_SIZE);
+  constructor(scene: Phaser.Scene, quality: QualitySettings) {
+    this.damageNumbers = new ObjectPool(() => new DamageNumber(scene), quality.damageNumberPoolSize);
+    this.hitEffects = new ObjectPool(() => new HitEffect(scene), quality.hitEffectPoolSize);
   }
 
   spawnDamageNumber(x: number, y: number, amount: number): void {

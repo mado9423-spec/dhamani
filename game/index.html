@@ -15,9 +15,20 @@
         padding: 0;
         width: 100%;
         height: 100%;
+        height: 100dvh;
         background: #0d0f14;
         overflow: hidden;
         overscroll-behavior: none;
+        /* Mobile hardening: no page scroll/pan/pinch-zoom gestures on
+           the game surface, no text selection, no iOS long-press
+           callout menu, no Android tap-highlight flash. */
+        touch-action: none;
+        -ms-touch-action: none;
+        -webkit-user-select: none;
+        -moz-user-select: none;
+        user-select: none;
+        -webkit-touch-callout: none;
+        -webkit-tap-highlight-color: transparent;
       }
 
       #app {
@@ -26,11 +37,13 @@
         height: 100%;
         align-items: center;
         justify-content: center;
+        touch-action: none;
       }
 
       #app canvas {
         max-width: 100%;
         max-height: 100%;
+        touch-action: none;
       }
     </style>
   </head>

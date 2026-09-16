@@ -1,6 +1,7 @@
 import Phaser from "phaser";
 import { PLAYER_FIRE_RANGE, PROJECTILE_SPEED } from "../config/CombatConfig";
 import { COLORS } from "../config/GameConfig";
+import { QualitySettings } from "../config/QualityConfig";
 import { Enemy } from "../entities/Enemy";
 import { Player } from "../entities/Player";
 import { Projectile } from "../entities/Projectile";
@@ -24,10 +25,10 @@ export class CombatSystem {
   private readonly scratchDirection = new Phaser.Math.Vector2();
   private fireTimer = 0;
 
-  constructor(scene: Phaser.Scene, private readonly enemyManager: EnemyManager) {
+  constructor(scene: Phaser.Scene, private readonly enemyManager: EnemyManager, quality: QualitySettings) {
     this.projectileManager = new ProjectileManager(scene);
     this.pickupManager = new PickupManager(scene);
-    this.effectsManager = new EffectsManager(scene);
+    this.effectsManager = new EffectsManager(scene, quality);
   }
 
   update(deltaSeconds: number, player: Player, worldBounds: Phaser.Geom.Rectangle): void {
