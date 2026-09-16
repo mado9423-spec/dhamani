@@ -6,6 +6,8 @@ import HomePage from "./pages/HomePage";
 import DeclarationPage from "./pages/DeclarationPage";
 import AppointmentBookingPage from "./pages/AppointmentBookingPage";
 import TransactionsPage from "./pages/TransactionsPage";
+import NotificationsPage from "./pages/NotificationsPage";
+import ProfilePage from "./pages/ProfilePage";
 import EmployeeDashboardPage from "./pages/EmployeeDashboardPage";
 import EmployeeCitizenDetailPage from "./pages/EmployeeCitizenDetailPage";
 import EmployeeChangePasswordPage from "./pages/EmployeeChangePasswordPage";
@@ -36,6 +38,8 @@ export default function App() {
         <Route path="/appointments/:type" element={<AppointmentBookingPage />} />
         <Route path="/transactions" element={<TransactionsPage />} />
         <Route path="/transactions/military" element={<TransactionsPage />} />
+        <Route path="/notifications" element={<NotificationsPage />} />
+        <Route path="/profile" element={<ProfilePage />} />
       </Routes>
     </BrowserRouter>
   );
