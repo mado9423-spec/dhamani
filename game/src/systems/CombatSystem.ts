@@ -4,25 +4,30 @@ import { COLORS } from "../config/GameConfig";
 import { Enemy } from "../entities/Enemy";
 import { Player } from "../entities/Player";
 import { Projectile } from "../entities/Projectile";
-import { spawnDamageNumber, spawnHitEffect } from "../ui/CombatFeedback";
+import { EffectsManager } from "./EffectsManager";
 import { EnemyManager } from "./EnemyManager";
 import { PickupManager } from "./PickupManager";
 import { ProjectileManager } from "./ProjectileManager";
 
 /**
  * The player auto-fires at the nearest enemy in range. Owns its own
- * projectile and pickup pools since both are strictly combat
+ * projectile/pickup/effects pools since all are strictly combat
  * concerns; only needs a reference to EnemyManager to find targets
  * and resolve hits.
  */
 export class CombatSystem {
   private readonly projectileManager: ProjectileManager;
   private readonly pickupManager: PickupManager;
+  private readonly effectsManager: EffectsManager;
+  // Reused every shot instead of allocating a new Vector2 each time —
+  // fire() only reads x/y out of it synchronously, never keeps it.
+  private readonly scratchDirection = new Phaser.Math.Vector2();
   private fireTimer = 0;
 
-  constructor(private readonly scene: Phaser.Scene, private readonly enemyManager: EnemyManager) {
+  constructor(scene: Phaser.Scene, private readonly enemyManager: EnemyManager) {
     this.projectileManager = new ProjectileManager(scene);
     this.pickupManager = new PickupManager(scene);
+    this.effectsManager = new EffectsManager(scene);
   }
 
   update(deltaSeconds: number, player: Player, worldBounds: Phaser.Geom.Rectangle): void {
@@ -47,8 +52,8 @@ export class CombatSystem {
       return;
     }
 
-    const direction = new Phaser.Math.Vector2(target.x - player.x, target.y - player.y).normalize();
-    this.projectileManager.fire(player.x, player.y, direction, PROJECTILE_SPEED, player.damage);
+    this.scratchDirection.set(target.x - player.x, target.y - player.y).normalize();
+    this.projectileManager.fire(player.x, player.y, this.scratchDirection, PROJECTILE_SPEED, player.damage);
     this.fireTimer = 1 / player.attackSpeed;
   }
 
@@ -63,8 +68,13 @@ export class CombatSystem {
           return;
         }
 
-        const distance = Phaser.Math.Distance.Between(projectile.x, projectile.y, enemy.x, enemy.y);
-        if (distance <= enemy.radius + projectile.radius) {
+        // Squared-distance comparison avoids a sqrt per pair — squaring
+        // is monotonic for non-negative values, so the <= comparison
+        // gives the exact same result as comparing real distances.
+        const dx = projectile.x - enemy.x;
+        const dy = projectile.y - enemy.y;
+        const hitDistance = enemy.radius + projectile.radius;
+        if (dx * dx + dy * dy <= hitDistance * hitDistance) {
           this.resolveHit(projectile, enemy);
         }
       });
@@ -75,8 +85,8 @@ export class CombatSystem {
     const damage = projectile.damage;
     projectile.deactivate();
 
-    spawnHitEffect(this.scene, enemy.x, enemy.y, COLORS.projectile);
-    spawnDamageNumber(this.scene, enemy.x, enemy.y - enemy.radius, damage);
+    this.effectsManager.spawnHitEffect(enemy.x, enemy.y, COLORS.projectile);
+    this.effectsManager.spawnDamageNumber(enemy.x, enemy.y - enemy.radius, damage);
 
     const killed = enemy.takeDamage(damage);
     if (killed) {

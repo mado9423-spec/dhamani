@@ -12,7 +12,14 @@ export class ObjectPool<T extends Phaser.GameObjects.GameObject> {
 
   constructor(private readonly factory: () => T, private readonly maxSize: number) {}
 
-  acquire(): T {
+  /**
+   * Returns an inactive instance, creating one if the pool isn't full
+   * yet. Returns null when the pool is genuinely exhausted (maxSize
+   * items, all active) — callers must skip that spawn rather than
+   * forcing reuse of a still-active item, which would silently
+   * teleport/reconfigure something currently alive in the world.
+   */
+  acquire(): T | null {
     const free = this.items.find((item) => !item.active);
     if (free) {
       return free;
@@ -24,9 +31,7 @@ export class ObjectPool<T extends Phaser.GameObjects.GameObject> {
       return created;
     }
 
-    // Pool exhausted: recycle the oldest active item rather than
-    // growing past maxSize.
-    return this.items[0];
+    return null;
   }
 
   forEachActive(callback: (item: T) => void): void {

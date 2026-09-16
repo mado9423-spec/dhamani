@@ -55,6 +55,10 @@ export class NightManager extends Phaser.Events.EventEmitter {
   private phaseTimer = 0;
   private phase: Phase = "wave-intro";
   private boss: Enemy | null = null;
+  // Reused every call instead of allocating a fresh object each frame
+  // the boss health bar reads it — the caller only reads the fields
+  // synchronously, never holds onto the reference.
+  private readonly bossHealthSnapshot = { health: 0, maxHealth: 0 };
 
   constructor(private readonly enemyManager: EnemyManager) {
     super();
@@ -117,7 +121,9 @@ export class NightManager extends Phaser.Events.EventEmitter {
     if (this.phase !== "boss" || !this.boss || !this.boss.active) {
       return null;
     }
-    return { health: this.boss.health, maxHealth: this.boss.maxHealth };
+    this.bossHealthSnapshot.health = this.boss.health;
+    this.bossHealthSnapshot.maxHealth = this.boss.maxHealth;
+    return this.bossHealthSnapshot;
   }
 
   private get currentNight() {
@@ -157,14 +163,19 @@ export class NightManager extends Phaser.Events.EventEmitter {
     const isFinalNight = this.isFinalNight;
     const bossType = isFinalNight ? "finalBoss" : "boss";
 
-    this.boss = this.enemyManager.spawnAt(bossType, point.x, point.y, this.currentNight.difficultyMultiplier);
+    const boss = this.enemyManager.spawnAt(bossType, point.x, point.y, this.currentNight.difficultyMultiplier);
+    if (!boss) {
+      // Pool momentarily full (shouldn't happen here — a wave only
+      // finishes once activeCount is 0 — but stay defensive). Retry
+      // shortly instead of getting stuck in boss-intro forever.
+      this.phaseTimer = 250;
+      return;
+    }
+
+    this.boss = boss;
     this.phase = "boss";
 
-    const payload: BossStartPayload = {
-      nightNumber: this.nightIndex + 1,
-      isFinalNight,
-      maxHealth: this.boss.maxHealth,
-    };
+    const payload: BossStartPayload = { nightNumber: this.nightIndex + 1, isFinalNight, maxHealth: boss.maxHealth };
     this.emit(NightManagerEvents.BOSS_START, payload);
   }
 
@@ -193,10 +204,19 @@ export class NightManager extends Phaser.Events.EventEmitter {
       return;
     }
 
-    this.spawnTimer = WAVE_SPAWN_INTERVAL_MS;
     const type = ENEMY_TYPES[Phaser.Math.Between(0, ENEMY_TYPES.length - 1)];
     const point = randomRingPoint(player.x, player.y, ENEMY_SPAWN_MIN_DISTANCE, ENEMY_SPAWN_MAX_DISTANCE, worldBounds);
-    this.enemyManager.spawnAt(type, point.x, point.y, this.currentNight.difficultyMultiplier);
+    const spawned = this.enemyManager.spawnAt(type, point.x, point.y, this.currentNight.difficultyMultiplier);
+
+    if (!spawned) {
+      // Pool at capacity: leave spawnTimer at/below zero so this is
+      // retried again next frame (not another full interval away) as
+      // soon as a slot frees up, instead of losing this wave enemy or
+      // reusing one that's still alive.
+      return;
+    }
+
+    this.spawnTimer = WAVE_SPAWN_INTERVAL_MS;
     this.remainingToSpawn -= 1;
   }
 }

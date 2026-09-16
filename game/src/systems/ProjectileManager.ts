@@ -12,7 +12,9 @@ export class ProjectileManager {
   }
 
   fire(x: number, y: number, direction: Phaser.Math.Vector2, speed: number, damage: number): void {
-    this.pool.acquire().fire(x, y, direction, speed, damage);
+    // Pool exhausted (extreme fire-rate burst): just skip this shot
+    // rather than repositioning one still mid-flight.
+    this.pool.acquire()?.fire(x, y, direction, speed, damage);
   }
 
   update(deltaSeconds: number, worldBounds: Phaser.Geom.Rectangle): void {

@@ -23,3 +23,8 @@ export const PICKUP_POOL_SIZE = 60;
 export const PICKUP_MAGNET_RADIUS = 90;
 export const PICKUP_COLLECT_RADIUS = 22;
 export const PICKUP_SPEED = 260;
+
+// Combat feedback (damage numbers, hit bursts) — pooled and bounded so
+// a high fire rate can never create unbounded GameObjects.
+export const DAMAGE_NUMBER_POOL_SIZE = 30;
+export const HIT_EFFECT_POOL_SIZE = 30;

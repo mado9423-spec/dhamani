@@ -11,6 +11,9 @@ export class BossHealthBar {
   private readonly label: Phaser.GameObjects.Text;
   private readonly background: Phaser.GameObjects.Rectangle;
   private readonly fill: Phaser.GameObjects.Rectangle;
+  // update() is called every frame the boss is alive; skip touching
+  // the Rectangle's geometry when the ratio hasn't actually changed.
+  private lastRatio = -1;
 
   constructor(scene: Phaser.Scene) {
     const x = (GAME_WIDTH - BAR_WIDTH) / 2;
@@ -40,6 +43,8 @@ export class BossHealthBar {
   show(isFinalBoss = false): void {
     this.label.setText(isFinalBoss ? "FINAL BOSS" : "BOSS");
     this.fill.setFillStyle(isFinalBoss ? COLORS.finalBossHealthFill : COLORS.bossHealthFill);
+    this.fill.width = BAR_WIDTH;
+    this.lastRatio = 1;
     this.label.setVisible(true);
     this.background.setVisible(true);
     this.fill.setVisible(true);
@@ -52,7 +57,12 @@ export class BossHealthBar {
   }
 
   update(health: number, maxHealth: number): void {
-    this.fill.width = BAR_WIDTH * clamp(health / maxHealth, 0, 1);
+    const ratio = clamp(health / maxHealth, 0, 1);
+    if (ratio === this.lastRatio) {
+      return;
+    }
+    this.lastRatio = ratio;
+    this.fill.width = BAR_WIDTH * ratio;
   }
 
   destroy(): void {

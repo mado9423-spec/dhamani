@@ -16,7 +16,9 @@ export class PickupManager {
     if (value <= 0) {
       return;
     }
-    this.pool.acquire().spawn(kind, x, y, value);
+    // Pool exhausted (many unclaimed drops piled up): skip this one
+    // rather than overwriting a drop the player hasn't collected yet.
+    this.pool.acquire()?.spawn(kind, x, y, value);
   }
 
   update(deltaSeconds: number, player: Player): void {

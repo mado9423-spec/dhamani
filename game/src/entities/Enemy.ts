@@ -21,6 +21,12 @@ export class Enemy extends Phaser.GameObjects.Container {
   private readonly bodyShape: Phaser.GameObjects.Arc;
   private attackTimer = 0;
   private dying = false;
+  // Bumped every spawn(). A hit-flash's delayedCall captures this and
+  // checks it still matches before touching this (pooled) instance, so
+  // it can never revert the color of whatever this slot was reused for
+  // in the meantime — correct regardless of how HIT_FLASH_MS and
+  // DEATH_TWEEN_MS are tuned relative to each other.
+  private lifeId = 0;
 
   constructor(scene: Phaser.Scene) {
     super(scene, 0, 0);
@@ -63,6 +69,7 @@ export class Enemy extends Phaser.GameObjects.Container {
   spawn(type: EnemyTypeId, x: number, y: number, difficultyMultiplier = 1): void {
     const definition: EnemyDefinition = getEnemyDefinition(type);
 
+    this.lifeId += 1;
     this.type = type;
     this.stats = {
       ...definition.stats,
@@ -149,9 +156,10 @@ export class Enemy extends Phaser.GameObjects.Container {
   private playHitFlash(): void {
     this.bodyShape.setFillStyle(COLORS.enemyHitFlash);
     const originalColor = getEnemyDefinition(this.type).visual.color;
+    const flashLifeId = this.lifeId;
 
     this.scene.time.delayedCall(HIT_FLASH_MS, () => {
-      if (this.active && !this.dying) {
+      if (this.active && !this.dying && this.lifeId === flashLifeId) {
         this.bodyShape.setFillStyle(originalColor);
       }
     });

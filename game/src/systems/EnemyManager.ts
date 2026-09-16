@@ -22,20 +22,26 @@ export class EnemyManager {
     this.pool.forEachActive((enemy) => enemy.update(deltaSeconds, player, worldBounds));
   }
 
-  spawnAt(type: EnemyTypeId, x: number, y: number, difficultyMultiplier = 1): Enemy {
+  /** Returns null if the pool is at capacity — caller should just skip this spawn. */
+  spawnAt(type: EnemyTypeId, x: number, y: number, difficultyMultiplier = 1): Enemy | null {
     const enemy = this.pool.acquire();
+    if (!enemy) {
+      return null;
+    }
     enemy.spawn(type, x, y, difficultyMultiplier);
     return enemy;
   }
 
   findNearest(x: number, y: number, maxDistance: number): Enemy | null {
     let nearest: Enemy | null = null;
-    let nearestDistance = maxDistance;
+    let nearestDistanceSq = maxDistance * maxDistance;
 
     this.pool.forEachActive((enemy) => {
-      const distance = Phaser.Math.Distance.Between(x, y, enemy.x, enemy.y);
-      if (distance <= nearestDistance) {
-        nearestDistance = distance;
+      const dx = enemy.x - x;
+      const dy = enemy.y - y;
+      const distanceSq = dx * dx + dy * dy;
+      if (distanceSq <= nearestDistanceSq) {
+        nearestDistanceSq = distanceSq;
         nearest = enemy;
       }
     });

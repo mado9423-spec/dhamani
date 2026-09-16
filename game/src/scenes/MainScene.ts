@@ -39,6 +39,12 @@ export class MainScene extends Phaser.Scene {
   private paused = false;
   private pendingUpgradeChoices = 0;
 
+  // Class-field arrow functions so the exact same reference can be
+  // passed to both .on() and .off() — an inline arrow at each call
+  // site can't be unsubscribed later.
+  private readonly handlePlayerDied = (): void => this.deathScreen.show();
+  private readonly handlePlayerLevelUp = (): void => this.queueUpgradeChoice();
+
   constructor() {
     super("MainScene");
   }
@@ -61,13 +67,15 @@ export class MainScene extends Phaser.Scene {
     this.wireNightEvents();
     this.nightManager.start();
 
-    this.player.on(PlayerEvents.DIED, () => this.deathScreen.show());
-    this.player.on(PlayerEvents.LEVEL_UP, () => this.queueUpgradeChoice());
+    this.player.on(PlayerEvents.DIED, this.handlePlayerDied);
+    this.player.on(PlayerEvents.LEVEL_UP, this.handlePlayerLevelUp);
 
     this.cameras.main.setBounds(0, 0, WORLD_WIDTH, WORLD_HEIGHT);
     this.cameras.main.startFollow(this.player, true, 0.12, 0.12);
 
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
+      this.player.off(PlayerEvents.DIED, this.handlePlayerDied);
+      this.player.off(PlayerEvents.LEVEL_UP, this.handlePlayerLevelUp);
       this.hud.destroy();
       this.deathScreen.destroy();
       this.announcement.destroy();
