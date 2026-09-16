@@ -1,43 +1,47 @@
 import Phaser from "phaser";
+import { GAME_HEIGHT, GAME_WIDTH } from "../config/GameConfig";
+import { FireButton } from "./FireButton";
+import { KeyboardInput } from "./KeyboardInput";
+import { VirtualJoystick } from "./VirtualJoystick";
+
+// Bottom-left 65% of the screen height, so the joystick never appears
+// under the HUD text pinned to the top-left corner.
+const JOYSTICK_ZONE = new Phaser.Geom.Rectangle(0, GAME_HEIGHT * 0.35, GAME_WIDTH * 0.5, GAME_HEIGHT * 0.65);
+const FIRE_BUTTON_X = GAME_WIDTH - 80;
+const FIRE_BUTTON_Y = GAME_HEIGHT - 80;
 
 /**
- * Abstracts raw keyboard input into a normalized movement vector.
- * Later input sources (touch stick, gamepad) can implement the same
- * getMovementVector() contract without changing consumers.
+ * Unifies keyboard and on-screen touch controls behind one API so
+ * scenes/entities don't need to know which input source is active.
+ * Touch controls are only created on touch-capable devices so they
+ * never sit on top of the desktop view.
  */
 export class InputManager {
-  private readonly cursors: Phaser.Types.Input.Keyboard.CursorKeys;
-  private readonly wasd: {
-    up: Phaser.Input.Keyboard.Key;
-    down: Phaser.Input.Keyboard.Key;
-    left: Phaser.Input.Keyboard.Key;
-    right: Phaser.Input.Keyboard.Key;
-  };
+  private readonly keyboard: KeyboardInput;
+  private readonly joystick: VirtualJoystick | null;
+  private readonly fireButton: FireButton | null;
 
   constructor(scene: Phaser.Scene) {
-    const keyboard = scene.input.keyboard;
-    if (!keyboard) {
-      throw new Error("Keyboard input plugin is not available on this scene.");
-    }
+    this.keyboard = new KeyboardInput(scene);
 
-    this.cursors = keyboard.createCursorKeys();
-    this.wasd = {
-      up: keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.W),
-      down: keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.S),
-      left: keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.A),
-      right: keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.D),
-    };
+    const supportsTouch = scene.sys.game.device.input.touch;
+    this.joystick = supportsTouch ? new VirtualJoystick(scene, JOYSTICK_ZONE) : null;
+    this.fireButton = supportsTouch ? new FireButton(scene, FIRE_BUTTON_X, FIRE_BUTTON_Y) : null;
   }
 
   getMovementVector(): Phaser.Math.Vector2 {
-    const left = this.cursors.left.isDown || this.wasd.left.isDown;
-    const right = this.cursors.right.isDown || this.wasd.right.isDown;
-    const up = this.cursors.up.isDown || this.wasd.up.isDown;
-    const down = this.cursors.down.isDown || this.wasd.down.isDown;
+    if (this.joystick && this.joystick.isActive) {
+      return this.joystick.getVector();
+    }
+    return this.keyboard.getMovementVector();
+  }
 
-    const x = (right ? 1 : 0) - (left ? 1 : 0);
-    const y = (down ? 1 : 0) - (up ? 1 : 0);
+  isFiring(): boolean {
+    return this.fireButton?.isDown ?? false;
+  }
 
-    return new Phaser.Math.Vector2(x, y).normalize();
+  destroy(): void {
+    this.joystick?.destroy();
+    this.fireButton?.destroy();
   }
 }
