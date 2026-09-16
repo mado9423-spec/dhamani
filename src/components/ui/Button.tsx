@@ -15,11 +15,11 @@ export function Button({
   ...rest
 }: ButtonProps) {
   const base =
-    "h-12 w-full rounded-xl font-bold text-base transition-all duration-200 flex items-center justify-center gap-2 active:scale-[0.98] disabled:cursor-not-allowed";
+    "h-12 w-full rounded-xl font-bold text-base transition-all duration-200 flex items-center justify-center gap-2 active:scale-[0.98] disabled:cursor-not-allowed disabled:shadow-none";
 
   const variants: Record<string, string> = {
     primary:
-      "bg-[#123F63] text-white hover:bg-[#0B2D47] disabled:bg-gray-300 disabled:text-gray-500",
+      "bg-[#123F63] text-white shadow-sm hover:bg-[#0B2D47] hover:shadow-md disabled:bg-gray-300 disabled:text-gray-500",
     secondary:
       "bg-white text-[#123F63] border border-[#123F63] hover:bg-[#E8EEF4]",
     ghost: "bg-transparent text-[#123F63] hover:bg-[#E8EEF4]",

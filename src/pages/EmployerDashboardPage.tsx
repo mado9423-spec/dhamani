@@ -23,7 +23,7 @@ const EMPLOYMENT_STATUS_CONFIG: Record<string, { label: string; bg: string; text
 function Badge({ config }: { config: { label: string; bg: string; text: string } }) {
   return (
     <span
-      className="inline-flex items-center rounded-full px-3 py-1 text-[12px] font-bold"
+      className="inline-flex animate-scale-in items-center rounded-full px-3 py-1 text-[12px] font-bold"
       style={{ backgroundColor: config.bg, color: config.text }}
     >
       {config.label}
@@ -67,7 +67,7 @@ export default function EmployerDashboardPage() {
 
   return (
     <div dir="rtl" className="min-h-screen bg-[#F5F6F7] font-cairo">
-      <header className="bg-[#17212B] px-6 py-5">
+      <header className="animate-fade-in-up bg-[#17212B] px-6 py-5">
         <div className="flex items-start justify-between">
           <div>
             <p className="text-xs font-semibold text-white/60">بوابة جهات العمل</p>
@@ -82,11 +82,11 @@ export default function EmployerDashboardPage() {
 
       <main className="px-6 py-6">
         {!employer ? (
-          <div className="rounded-2xl bg-[#FBEAE8] p-4 text-center text-sm font-semibold text-[#C0392B]">
+          <div className="animate-fade-in-up rounded-2xl bg-[#FBEAE8] p-4 text-center text-sm font-semibold text-[#C0392B]">
             تعذر تحميل بيانات جهة العمل
           </div>
         ) : (
-          <div className="rounded-2xl border border-[#E2E7EB] bg-white p-5">
+          <div className="animate-fade-in-up rounded-2xl border border-[#E2E7EB] bg-white p-5 shadow-sm">
             <div className="flex items-start justify-between">
               <div>
                 <p className="text-xs font-semibold text-[#687581]">اسم جهة العمل</p>
@@ -117,7 +117,7 @@ export default function EmployerDashboardPage() {
         </h2>
 
         {employments.length === 0 ? (
-          <div className="flex flex-col items-center gap-2 pt-10 text-center">
+          <div className="flex animate-fade-in-up flex-col items-center gap-2 pt-10 text-center">
             <div className="flex h-14 w-14 items-center justify-center rounded-full bg-[#E8EEF4] text-2xl">
               👥
             </div>
@@ -128,10 +128,11 @@ export default function EmployerDashboardPage() {
           </div>
         ) : (
           <div className="flex flex-col gap-3">
-            {employments.map((emp) => (
+            {employments.map((emp, index) => (
               <div
                 key={emp.id}
-                className="flex flex-col gap-2 rounded-2xl border border-[#E2E7EB] bg-white p-4"
+                className="flex animate-fade-in-up flex-col gap-2 rounded-2xl border border-[#E2E7EB] bg-white p-4 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md"
+                style={{ animationDelay: `${index * 40}ms` }}
               >
                 <div className="flex items-start justify-between">
                   <div>

@@ -29,14 +29,16 @@ export function BottomNav() {
           {({ isActive }) => (
             <>
               <span
-                className={`h-1 w-1 rounded-full transition-opacity duration-200 ${
-                  isActive ? "bg-[#123F63] opacity-100" : "opacity-0"
+                className={`h-1 w-1 rounded-full bg-[#123F63] transition-all duration-200 ${
+                  isActive ? "scale-100 opacity-100" : "scale-0 opacity-0"
                 }`}
               />
               <Icon
                 name={item.icon}
                 size={22}
-                className={isActive ? "text-[#123F63]" : "text-[#9CA3AF]"}
+                className={`transition-transform duration-200 ${
+                  isActive ? "scale-110 text-[#123F63]" : "text-[#9CA3AF]"
+                }`}
               />
               <span
                 className={`text-[11px] font-semibold transition-colors duration-200 ${

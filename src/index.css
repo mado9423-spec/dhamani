@@ -10,3 +10,24 @@ body {
   margin: 0;
   background-color: #f6f8fa;
 }
+
+:focus-visible {
+  outline: 2px solid #123f63;
+  outline-offset: 2px;
+}
+
+.skeleton-shimmer {
+  background: linear-gradient(90deg, #e2e7eb 25%, #eef1f4 50%, #e2e7eb 75%);
+  background-size: 200% 100%;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

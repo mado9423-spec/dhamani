@@ -104,7 +104,7 @@ export default function HomePage() {
         </p>
 
         {isLoading ? (
-          <div className="mt-1 h-7 w-40 animate-pulse rounded-md bg-[#E2E7EB]" />
+          <div className="mt-1 h-7 w-40 animate-shimmer rounded-md skeleton-shimmer" />
         ) : (
           <>
             <h1 className="mt-1 text-xl font-extrabold text-[#17212B]">
@@ -116,12 +116,26 @@ export default function HomePage() {
       </header>
 
       <main className="flex flex-col gap-3 px-6 pt-5">
-        {featuredService && <ServiceCard service={featuredService} />}
-        {fullWidthService && <ServiceCard service={fullWidthService} />}
+        {featuredService && (
+          <div className="animate-fade-in-up">
+            <ServiceCard service={featuredService} />
+          </div>
+        )}
+        {fullWidthService && (
+          <div className="animate-fade-in-up [animation-delay:60ms]">
+            <ServiceCard service={fullWidthService} />
+          </div>
+        )}
 
         <div className="mt-1 grid grid-cols-2 gap-3">
-          {gridServices.map((service) => (
-            <ServiceCard key={service.id} service={service} />
+          {gridServices.map((service, index) => (
+            <div
+              key={service.id}
+              className="animate-fade-in-up"
+              style={{ animationDelay: `${120 + index * 40}ms` }}
+            >
+              <ServiceCard service={service} />
+            </div>
           ))}
         </div>
       </main>
