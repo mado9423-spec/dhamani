@@ -1,4 +1,5 @@
 export type EnemyType = "walker" | "fast" | "tank";
+export type EnemyTypeId = EnemyType | "boss";
 
 export interface EnemyStats {
   health: number;
@@ -68,3 +69,24 @@ export const ENEMY_DEFINITIONS: Record<EnemyType, EnemyDefinition> = {
 };
 
 export const ENEMY_TYPES: EnemyType[] = ["walker", "fast", "tank"];
+
+// Boss isn't part of ENEMY_DEFINITIONS/ENEMY_TYPES since it's never
+// picked by random wave spawning — NightManager spawns it explicitly
+// once all of a night's waves are cleared.
+export const BOSS_DEFINITION: EnemyDefinition = {
+  stats: {
+    health: 600,
+    maxHealth: 600,
+    speed: 70,
+    damage: 26,
+    attackRange: 70,
+    attackCooldown: 1.1,
+    xpReward: 100,
+    coinReward: 40,
+  },
+  visual: { radius: 46, color: 0x9333ea, strokeColor: 0x2e0a4d, strokeWidth: 5 },
+};
+
+export function getEnemyDefinition(type: EnemyTypeId): EnemyDefinition {
+  return type === "boss" ? BOSS_DEFINITION : ENEMY_DEFINITIONS[type];
+}

@@ -1,24 +1,18 @@
 import Phaser from "phaser";
-import {
-  ENEMY_POOL_SIZE,
-  ENEMY_SPAWN_INTERVAL_MS,
-  ENEMY_SPAWN_MAX_DISTANCE,
-  ENEMY_SPAWN_MIN_DISTANCE,
-  MAX_CONCURRENT_ENEMIES,
-} from "../config/CombatConfig";
-import { ENEMY_TYPES } from "../config/EnemyConfig";
+import { ENEMY_POOL_SIZE } from "../config/CombatConfig";
+import { EnemyTypeId } from "../config/EnemyConfig";
 import { Enemy } from "../entities/Enemy";
 import { Player } from "../entities/Player";
 import { ObjectPool } from "./ObjectPool";
 
 /**
- * Owns the enemy pool: periodic spawning around the player (just
- * outside the viewport) up to a concurrent cap, and per-frame AI
- * updates for every active enemy.
+ * Owns the enemy pool: per-frame AI updates for every active enemy,
+ * plus a spawnAt() entry point used by NightManager to place wave and
+ * boss enemies. Placement timing/counts belong to NightManager — this
+ * only knows how to put one enemy of a given type somewhere.
  */
 export class EnemyManager {
   private readonly pool: ObjectPool<Enemy>;
-  private spawnTimer = 0;
 
   constructor(private readonly scene: Phaser.Scene) {
     this.pool = new ObjectPool(() => new Enemy(this.scene), ENEMY_POOL_SIZE);
@@ -26,16 +20,12 @@ export class EnemyManager {
 
   update(deltaSeconds: number, player: Player, worldBounds: Phaser.Geom.Rectangle): void {
     this.pool.forEachActive((enemy) => enemy.update(deltaSeconds, player, worldBounds));
+  }
 
-    if (player.isDead) {
-      return;
-    }
-
-    this.spawnTimer -= deltaSeconds * 1000;
-    if (this.spawnTimer <= 0) {
-      this.spawnTimer = ENEMY_SPAWN_INTERVAL_MS;
-      this.trySpawn(player, worldBounds);
-    }
+  spawnAt(type: EnemyTypeId, x: number, y: number): Enemy {
+    const enemy = this.pool.acquire();
+    enemy.spawn(type, x, y);
+    return enemy;
   }
 
   findNearest(x: number, y: number, maxDistance: number): Enemy | null {
@@ -57,23 +47,7 @@ export class EnemyManager {
     this.pool.forEachActive(callback);
   }
 
-  private trySpawn(player: Player, worldBounds: Phaser.Geom.Rectangle): void {
-    if (this.pool.activeCount >= MAX_CONCURRENT_ENEMIES) {
-      return;
-    }
-
-    const type = ENEMY_TYPES[Phaser.Math.Between(0, ENEMY_TYPES.length - 1)];
-    const { x, y } = this.randomSpawnPoint(player, worldBounds);
-    this.pool.acquire().spawn(type, x, y);
-  }
-
-  private randomSpawnPoint(player: Player, worldBounds: Phaser.Geom.Rectangle): { x: number; y: number } {
-    const angle = Phaser.Math.FloatBetween(0, Math.PI * 2);
-    const distance = Phaser.Math.FloatBetween(ENEMY_SPAWN_MIN_DISTANCE, ENEMY_SPAWN_MAX_DISTANCE);
-
-    return {
-      x: Phaser.Math.Clamp(player.x + Math.cos(angle) * distance, worldBounds.x + 20, worldBounds.right - 20),
-      y: Phaser.Math.Clamp(player.y + Math.sin(angle) * distance, worldBounds.y + 20, worldBounds.bottom - 20),
-    };
+  get activeCount(): number {
+    return this.pool.activeCount;
   }
 }

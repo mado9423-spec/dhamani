@@ -28,6 +28,7 @@ export class HUD {
   private readonly levelText: Phaser.GameObjects.Text;
 
   private readonly coinsText: Phaser.GameObjects.Text;
+  private readonly waveStatusText: Phaser.GameObjects.Text;
 
   constructor(scene: Phaser.Scene, player: Player) {
     this.player = player;
@@ -82,6 +83,11 @@ export class HUD {
       .setScrollFactor(0)
       .setDepth(2000);
 
+    this.waveStatusText = scene.add
+      .text(BAR_X, 94, "", { fontFamily: "monospace", fontSize: "12px", color: "#8892a6" })
+      .setScrollFactor(0)
+      .setDepth(2000);
+
     player.on(PlayerEvents.HEALTH_CHANGED, this.updateHealth, this);
     player.on(PlayerEvents.XP_CHANGED, this.updateXp, this);
     player.on(PlayerEvents.LEVEL_UP, this.playLevelUpFeedback, this);
@@ -105,6 +111,11 @@ export class HUD {
     this.xpBarFill.destroy();
     this.levelText.destroy();
     this.coinsText.destroy();
+    this.waveStatusText.destroy();
+  }
+
+  setWaveStatus(text: string): void {
+    this.waveStatusText.setText(text);
   }
 
   private updateHealth({ health, maxHealth }: HealthChangedPayload): void {

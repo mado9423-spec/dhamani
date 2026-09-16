@@ -1,6 +1,6 @@
 import Phaser from "phaser";
 import { COLORS } from "../config/GameConfig";
-import { EnemyDefinition, EnemyStats, EnemyType, ENEMY_DEFINITIONS } from "../config/EnemyConfig";
+import { EnemyDefinition, EnemyStats, EnemyTypeId, getEnemyDefinition } from "../config/EnemyConfig";
 import { clamp } from "../utils/MathUtils";
 import { Player } from "./Player";
 
@@ -14,7 +14,7 @@ const DEATH_TWEEN_MS = 220;
  * used — walker/fast/tank are told apart by size and color.
  */
 export class Enemy extends Phaser.GameObjects.Container {
-  type: EnemyType = "walker";
+  type: EnemyTypeId = "walker";
   readonly velocity = new Phaser.Math.Vector2();
 
   private stats: EnemyStats;
@@ -25,7 +25,7 @@ export class Enemy extends Phaser.GameObjects.Container {
   constructor(scene: Phaser.Scene) {
     super(scene, 0, 0);
 
-    const walker = ENEMY_DEFINITIONS.walker;
+    const walker = getEnemyDefinition("walker");
     this.stats = { ...walker.stats };
     this.bodyShape = scene.add.circle(0, 0, walker.visual.radius, walker.visual.color);
     this.bodyShape.setStrokeStyle(walker.visual.strokeWidth, walker.visual.strokeColor);
@@ -60,8 +60,8 @@ export class Enemy extends Phaser.GameObjects.Container {
     return this.stats.coinReward;
   }
 
-  spawn(type: EnemyType, x: number, y: number): void {
-    const definition: EnemyDefinition = ENEMY_DEFINITIONS[type];
+  spawn(type: EnemyTypeId, x: number, y: number): void {
+    const definition: EnemyDefinition = getEnemyDefinition(type);
 
     this.type = type;
     this.stats = { ...definition.stats };
@@ -141,7 +141,7 @@ export class Enemy extends Phaser.GameObjects.Container {
 
   private playHitFlash(): void {
     this.bodyShape.setFillStyle(COLORS.enemyHitFlash);
-    const originalColor = ENEMY_DEFINITIONS[this.type].visual.color;
+    const originalColor = getEnemyDefinition(this.type).visual.color;
 
     this.scene.time.delayedCall(HIT_FLASH_MS, () => {
       if (this.active && !this.dying) {
