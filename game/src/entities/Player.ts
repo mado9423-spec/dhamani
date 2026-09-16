@@ -162,6 +162,11 @@ export class Player extends Phaser.GameObjects.Container {
     this.emit(PlayerEvents.COINS_CHANGED, { coins: this.stats.coins });
   }
 
+  /** Permanently mutates a stat (level-up upgrade pick). */
+  applyUpgrade(apply: (stats: PlayerStats) => void): void {
+    apply(this.stats);
+  }
+
   private levelUp(): void {
     this.stats.level += 1;
     this.stats.experienceToNextLevel = getExperienceForLevel(this.stats.level);

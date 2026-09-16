@@ -1,5 +1,6 @@
 import Phaser from "phaser";
 import { GAME_HEIGHT, GAME_WIDTH, WORLD_HEIGHT, WORLD_WIDTH } from "../config/GameConfig";
+import { UPGRADE_POOL, UpgradeDefinition } from "../config/UpgradeConfig";
 import { Background } from "../entities/Background";
 import { Player, PlayerEvents } from "../entities/Player";
 import { InputManager } from "../input/InputManager";
@@ -10,6 +11,9 @@ import { Announcement } from "../ui/Announcement";
 import { BossHealthBar } from "../ui/BossHealthBar";
 import { DeathScreen } from "../ui/DeathScreen";
 import { HUD } from "../ui/HUD";
+import { UpgradeSelection } from "../ui/UpgradeSelection";
+
+const UPGRADE_CHOICES_SHOWN = 3;
 
 export class MainScene extends Phaser.Scene {
   player!: Player;
@@ -21,7 +25,10 @@ export class MainScene extends Phaser.Scene {
   private deathScreen!: DeathScreen;
   private announcement!: Announcement;
   private bossHealthBar!: BossHealthBar;
+  private upgradeSelection!: UpgradeSelection;
   private readonly worldBounds = new Phaser.Geom.Rectangle(0, 0, WORLD_WIDTH, WORLD_HEIGHT);
+  private paused = false;
+  private pendingUpgradeChoices = 0;
 
   constructor() {
     super("MainScene");
@@ -36,6 +43,7 @@ export class MainScene extends Phaser.Scene {
     this.deathScreen = new DeathScreen(this, GAME_WIDTH, GAME_HEIGHT);
     this.announcement = new Announcement(this);
     this.bossHealthBar = new BossHealthBar(this);
+    this.upgradeSelection = new UpgradeSelection(this);
 
     this.enemyManager = new EnemyManager(this);
     this.combatSystem = new CombatSystem(this, this.enemyManager);
@@ -44,6 +52,7 @@ export class MainScene extends Phaser.Scene {
     this.nightManager.start();
 
     this.player.on(PlayerEvents.DIED, () => this.deathScreen.show());
+    this.player.on(PlayerEvents.LEVEL_UP, () => this.queueUpgradeChoice());
 
     this.cameras.main.setBounds(0, 0, WORLD_WIDTH, WORLD_HEIGHT);
     this.cameras.main.startFollow(this.player, true, 0.12, 0.12);
@@ -53,11 +62,16 @@ export class MainScene extends Phaser.Scene {
       this.deathScreen.destroy();
       this.announcement.destroy();
       this.bossHealthBar.destroy();
+      this.upgradeSelection.destroy();
       this.inputManager.destroy();
     });
   }
 
   update(_time: number, delta: number): void {
+    if (this.paused) {
+      return;
+    }
+
     const direction = this.inputManager.getMovementVector();
     const deltaSeconds = delta / 1000;
 
@@ -70,6 +84,30 @@ export class MainScene extends Phaser.Scene {
     if (bossHealth) {
       this.bossHealthBar.update(bossHealth.health, bossHealth.maxHealth);
     }
+  }
+
+  /** Queues an upgrade pick (levelling up multiple times at once queues one each). */
+  private queueUpgradeChoice(): void {
+    this.pendingUpgradeChoices += 1;
+    this.tryShowNextUpgrade();
+  }
+
+  private tryShowNextUpgrade(): void {
+    if (this.paused || this.pendingUpgradeChoices <= 0) {
+      return;
+    }
+
+    this.pendingUpgradeChoices -= 1;
+    this.paused = true;
+
+    const options = Phaser.Utils.Array.Shuffle([...UPGRADE_POOL]).slice(0, UPGRADE_CHOICES_SHOWN);
+    this.upgradeSelection.show(options, (upgrade) => this.onUpgradeChosen(upgrade));
+  }
+
+  private onUpgradeChosen(upgrade: UpgradeDefinition): void {
+    this.player.applyUpgrade(upgrade.apply);
+    this.paused = false;
+    this.tryShowNextUpgrade();
   }
 
   private wireNightEvents(): void {
