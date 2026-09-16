@@ -24,6 +24,9 @@ export const COLORS = {
   joystick: 0xffffff,
   fireButton: 0xff6b6b,
   overlay: 0x000000,
+  projectile: 0x9ae6ff,
+  enemyHitFlash: 0xffffff,
+  xpPickup: 0x4fd1c5,
 } as const;
 
 export function createGameConfig(scenes: Phaser.Types.Scenes.SceneType[]): Phaser.Types.Core.GameConfig {
