@@ -20,25 +20,51 @@ const DECOR_ALPHA = 0.85;
  * or, this project's current, actual zero-asset state, the existing
  * generated grid texture with its baked-in crack lines, no real image
  * required either way.
+ *
+ * A plain owner class (like EffectsManager/PickupManager), not itself a
+ * GameObject — the floor TileSprite and every decor image are added
+ * directly to the scene's display list via scene.add.*(), not grouped
+ * under a wrapping Container. That's for the same reason every other
+ * manager class here is plain: nothing about the floor/decor needs a
+ * shared transform, and a Container makes a genuine difference for
+ * cullDecor() below to work at all — a Container's render step loops its
+ * children unconditionally with no visibility gate of its own, while a
+ * top-level GameObject's `visible` flag is checked by the renderer
+ * before it's ever submitted (see GameObject.willRender()).
+ *
+ * Important nuance, verified directly with an instrumented render pass
+ * (patching Image.prototype.renderWebGL): Phaser's core renderer does
+ * *not* itself spatially cull ordinary Image/Sprite/TileSprite objects
+ * against the camera's view — only TilemapLayer-style specialized
+ * renderers do that internally. An object off-screen still gets
+ * renderWebGL() called on it exactly like an on-screen one; only the
+ * GPU's own rasterizer clips the actual pixel work, for free, at the
+ * hardware level, regardless of Container nesting. That's exactly why
+ * the floor is one TileSprite spanning the whole world rather than a
+ * grid of individual tile objects — there's no "many off-screen tiles"
+ * problem to have in the first place, by construction, since the GPU
+ * clip means a huge TileSprite costs the same as filling the viewport.
+ * The decor scatter is a handful of ordinary Image objects though, and
+ * those *do* need cullDecor() below if the JS-level submission itself
+ * (not just the GPU-clipped pixel work) is to skip off-screen ones.
  */
-export class Background extends Phaser.GameObjects.Container {
+export class Background {
   private readonly floor: Phaser.GameObjects.TileSprite;
   private readonly decorImages: Phaser.GameObjects.Image[] = [];
+  // Reused every cullDecor() call instead of allocating a fresh
+  // Rectangle per decor image per frame — getBounds(output) writes into
+  // whatever's passed in.
+  private readonly scratchBounds = new Phaser.Geom.Rectangle();
 
   constructor(scene: Phaser.Scene, width: number, height: number) {
-    super(scene, 0, 0);
-
     const hasTilesetAssets = (scene.registry.get(TILE_ASSETS_REGISTRY_KEY) as boolean | undefined) ?? false;
     const floorKey = hasTilesetAssets ? TILE_KEYS.floor : Background.ensureGeneratedTexture(scene);
 
     this.floor = scene.add.tileSprite(width / 2, height / 2, width, height, floorKey);
-    this.add(this.floor);
 
     if (hasTilesetAssets) {
       this.scatterDecor(scene, width, height);
     }
-
-    scene.add.existing(this);
   }
 
   /**
@@ -76,6 +102,25 @@ export class Background extends Phaser.GameObjects.Container {
   }
 
   /**
+   * Toggles each decor image's `visible` flag against whether its
+   * bounds actually overlap the camera's current world-view rectangle —
+   * call once per frame (see MainScene.update()). This is the part that
+   * actually skips off-screen decor at the JS level: Phaser's renderer
+   * checks `visible` via willRender() before calling renderWebGL() at
+   * all, so an invisible decor image costs nothing beyond this one
+   * bounds check, where a merely off-screen-but-visible one would still
+   * be submitted every frame regardless (see the class doc comment). A
+   * no-op in generated-texture mode, since decorImages is empty there.
+   */
+  cullDecor(camera: Phaser.Cameras.Scene2D.Camera): void {
+    const view = camera.worldView;
+    for (const decor of this.decorImages) {
+      decor.getBounds(this.scratchBounds);
+      decor.setVisible(Phaser.Geom.Rectangle.Overlaps(view, this.scratchBounds));
+    }
+  }
+
+  /**
    * Alternates between the two decor images and staggers alternate rows
    * by half the grid spacing, so the scatter reads as irregular clutter
    * rather than a visibly repeating tile pattern. Real-tileset mode only
@@ -91,7 +136,6 @@ export class Background extends Phaser.GameObjects.Container {
       for (let x = DECOR_MARGIN; x < width - DECOR_MARGIN; x += DECOR_SPACING) {
         const key = decorKeys[index % decorKeys.length];
         const image = scene.add.image(x + rowOffsetX, y, key).setAlpha(DECOR_ALPHA);
-        this.add(image);
         this.decorImages.push(image);
         index += 1;
       }

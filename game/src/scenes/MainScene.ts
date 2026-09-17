@@ -162,6 +162,7 @@ export class MainScene extends Phaser.Scene {
     this.combatSystem.update(deltaSeconds, this.player, this.worldBounds);
     this.nightManager.update(deltaSeconds, this.player, this.worldBounds);
     this.updateProximityDanger();
+    this.background.cullDecor(this.cameras.main);
 
     const bossHealth = this.nightManager.getBossHealth();
     if (bossHealth) {
