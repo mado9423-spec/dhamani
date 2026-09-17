@@ -1,6 +1,6 @@
 # PROGRESS.md — Survive: 7 Nights
 
-Current status snapshot. Last updated: 2026-09-17 (P1 upgrade-cap fix pass).
+Current status snapshot. Last updated: 2026-09-17 (P1 background-pause/upgrade-selection fix pass).
 
 ## What exists and works (verified this session)
 
@@ -59,9 +59,29 @@ Current status snapshot. Last updated: 2026-09-17 (P1 upgrade-cap fix pass).
   `upgradeLevels` back to `{0,0,0}` (confirms a related fix — the stats
   factory was changed from a shared constant to a per-Player factory so a
   nested `upgradeLevels` object can't leak between runs).
-- **Possible input-overlap bug (P1, logic-derived).** Backgrounding the tab
-  while the upgrade-selection screen is open may let a single "tap to
-  resume" also silently select a hidden upgrade card underneath it.
+- **~~Possible input-overlap bug (P1, logic-derived)~~ — FIXED and confirmed
+  reproduced pre-fix.** Backgrounding while the upgrade-selection screen
+  was open previously layered PauseOverlay on top of it; since both
+  registered independent global `pointerup` listeners with no mutual
+  awareness, a single tap meant to dismiss "Paused" could also land on a
+  hidden card and silently apply it — reproduced live via Playwright
+  before fixing (a forced-visible PauseOverlay + a tap on a covered card
+  incremented that upgrade's level with the card never having been seen).
+  Fixed two ways: (1) `MainScene.showBackgroundPause()` now no-ops
+  whenever `paused` (upgrade selection open) is already true — the
+  upgrade screen is its own valid paused state, so PauseOverlay simply
+  never appears over it anymore, and returning from background leaves the
+  same screen exactly as it was, no extra tap needed; (2)
+  `UpgradeSelection`'s pointer handlers independently defer to
+  `PauseOverlay.isShowing` as a second, defense-in-depth layer, verified
+  to still correctly block a card pick even when PauseOverlay is
+  force-shown by test code bypassing fix (1) entirely. Verified via
+  Playwright (desktop mouse) and a Pixel-7-emulated touch viewport: normal
+  PLAYING background/foreground gate unaffected, upgrade selection
+  survives background/foreground intact and remains genuinely clickable
+  afterward, no stuck state after choosing or after restarting mid-cycle,
+  and `game.events`/`scene.input` listener counts stay identical across 3
+  repeated background+upgrade+restart cycles (no accumulation).
 - **Polish gaps (P2/P3):** production source maps shipped, single 1.5 MB JS
   chunk, missing favicon (real reproducible 404 on load), no top-level error
   handling around bootstrap, no CI/`engines` field, no preload
@@ -70,8 +90,15 @@ Current status snapshot. Last updated: 2026-09-17 (P1 upgrade-cap fix pass).
 
 ## Immediate next step
 
-P0 (restart) and the uncapped-upgrade-stacking P1 are both done. See
-`RELEASE_CHECKLIST.md` for the remaining pre-launch checklist and
-`PROJECT_AUDIT.md`'s "TOP 10 PRIORITIES" for fix order. Per instruction,
-only that one P1 item was fixed in this pass — the rest of P1/P2 remain
-open and untouched, waiting for direction.
+P0 (restart), the uncapped-upgrade-stacking P1, and the background-pause /
+upgrade-selection input-conflict P1 are all done. See `RELEASE_CHECKLIST.md`
+for the remaining pre-launch checklist and `PROJECT_AUDIT.md`'s
+"TOP 10 PRIORITIES" for fix order. Per instruction, only that one P1 item
+was fixed in this pass — the rest of P1/P2 remain open and untouched,
+waiting for direction. One related, explicitly out-of-scope observation
+from this pass: `DeathScreen`/`VictoryScreen`'s restart button has the same
+shape of unguarded-overlap potential with `PauseOverlay` (both could be
+visible together if the player dies while backgrounded), but the
+consequence there is at most "restart fires a little more eagerly than
+intended," not a silently corrupted stat — left untouched as it's a
+different ticket.

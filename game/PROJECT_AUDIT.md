@@ -107,6 +107,107 @@ P1-3 was in scope for this pass.
 
 ---
 
+## Status update (2026-09-17, third follow-up pass)
+
+**P1-4 (background-pause / upgrade-selection input conflict) is fixed —
+and the suspected conflict was reproduced live, not just assumed.**
+
+Root cause, confirmed by reading Phaser's event dispatch order and then
+proving it: `MainScene.showBackgroundPause()` used to show `PauseOverlay`
+(depth 5000/5001) regardless of whether `UpgradeSelection` (depth
+4000/4001) was already open, and both registered independent global
+`scene.input.on(POINTER_UP, ...)` listeners with no awareness of each
+other. A Playwright reproduction confirmed the exact failure: with the
+upgrade screen open, force-showing `PauseOverlay` and tapping a spot that
+overlapped a card silently incremented that upgrade's level — the player
+would never have seen the card, since `PauseOverlay`'s 0.8-opacity
+rectangle visually covers it, and the same tap also dismissed
+`PauseOverlay` and would have resumed gameplay, all from a single tap
+meant only to dismiss "Paused."
+
+Fix, two layers, both in `MainScene.ts`/`UpgradeSelection.ts` only:
+1. **Removed the overlap at the source.** `showBackgroundPause()` now
+   no-ops whenever `this.paused` (an upgrade choice is pending) is already
+   true. The upgrade-selection screen is itself a valid, intentional
+   paused state (per the existing `paused`/`backgroundPaused` two-flag
+   design already in the code) — layering a second, separate full-screen
+   gate on top of it was never necessary and is what created the
+   conflict. Backgrounding/foregrounding while choosing an upgrade now
+   simply leaves that exact screen in place; nothing is shown or
+   dismissed, nothing is destroyed, and no extra tap is required before
+   the player can choose.
+2. **Defense in depth.** `UpgradeSelection`'s own `handlePointerMove`/
+   `handlePointerUp` now also defer to `PauseOverlay.isShowing` (via a
+   constructor-injected `() => boolean`, not a stored instance reference —
+   the getter has to be evaluated fresh on each check specifically because
+   `PauseOverlay`'s own dismiss handler flips `isShowing` to `false` as
+   its first action, so listener *registration order* matters: this class
+   must still register its pointer listeners — and therefore run first on
+   a shared tap — before `PauseOverlay` does, which is why `MainScene`
+   keeps constructing `UpgradeSelection` ahead of `PauseOverlay`; an
+   earlier attempt that passed a concrete `PauseOverlay` reference and
+   reordered construction the other way was caught by this pass's own
+   Playwright test, which showed the guard reading already-stale
+   post-dismiss state). This layer was verified independently: forcing
+   `PauseOverlay` visible by calling its `show()` directly (bypassing fix
+   1 entirely) and tapping a covered card still correctly left that
+   upgrade's level unchanged, while `PauseOverlay` itself still dismissed
+   normally on that same tap (its own unconditional "tap anywhere"
+   behavior, unaffected and correct).
+
+State behavior — before vs. after:
+- **Before:** background-then-tap while choosing an upgrade could
+  silently apply a random unseen upgrade and simultaneously resume
+  gameplay from a single tap.
+- **After:** backgrounding while choosing an upgrade shows nothing extra;
+  returning to the tab shows the exact same, still-fully-functional
+  upgrade screen; only a real tap on a real card applies that upgrade and
+  resumes gameplay, exactly once.
+
+Verified via Playwright (desktop mouse, `emit('pause')`/`emit('resume')`
+on `game.events` to exercise `MainScene`'s actual reaction — the same
+events Phaser's own Core `VisibilityHandler` fires on a real
+`visibilitychange`, used directly since headless-Chromium's own
+`visibilitychange` emulation is unreliable for automated testing, noted
+here rather than overclaimed) and a Pixel-7-emulated touch viewport
+(`page.touchscreen.tap()`):
+- Plain `PLAYING` → background → foreground: unaffected, still requires
+  an explicit tap-to-resume (existing, deliberate UX, not touched).
+- `UPGRADE_SELECTION` → background → foreground: screen survives intact,
+  remains genuinely tappable, resumes exactly once when a card is chosen.
+- A queued multi-level-up sequence (the existing "one pick per level"
+  design) drains correctly through a background/foreground cycle with no
+  stuck state.
+- Restart triggered while mid-upgrade-selection-and-background-cycle (via
+  a forced death) leaves fully clean state — no stray `paused`/
+  `backgroundPaused`/overlay-visible flags survive the restart.
+- `game.events`(`pause`/`resume`) and `scene.input`(`pointerup`/
+  `pointermove`) listener counts stay bit-for-bit identical across 3
+  repeated background+upgrade+restart cycles — no accumulation.
+- Zero page errors throughout every test.
+- Mobile: tested only via Chromium's Pixel 7 device emulation and
+  `page.touchscreen.tap()` — real Android app-lifecycle backgrounding
+  (task-switcher freeze/OS process suspension) was not and could not be
+  tested in this environment; only the browser-level
+  `visibilitychange`-driven code path was verified.
+
+One related, explicitly out-of-scope observation: `DeathScreen`/
+`VictoryScreen`'s `RestartButton` has the same *shape* of unguarded
+overlap potential with `PauseOverlay` (both could be visible together if
+the player dies while the tab is backgrounded) — but there the worst case
+is "restart fires a bit more eagerly than intended," not a silently
+corrupted stat, and it wasn't part of this ticket's scope, so it was left
+untouched.
+
+`npx tsc --noEmit` and `npm run build` both stay clean; zero
+`any`/`@ts-ignore` introduced. Only `MainScene.ts` and
+`UpgradeSelection.ts` were changed.
+
+**All other P1/P2/P3 findings below remain open and untouched** — only
+P1-4 was in scope for this pass.
+
+---
+
 ## 1. Project Discovery (verified facts, not assumptions)
 
 - Stack: Phaser **3.90.0** installed (declared `^3.80.1`), TypeScript

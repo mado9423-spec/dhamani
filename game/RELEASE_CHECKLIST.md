@@ -22,8 +22,17 @@ release.
       screen skips maxed upgrades and never shows an empty/dead-end screen.
       Verified with Playwright at 20× over-application per upgrade — see
       `PROJECT_AUDIT.md`'s P1 fix note.
-- [ ] **Background-pause vs. upgrade-selection input overlap.** Prevent a
-      "tap to resume" input from also registering as an upgrade-card pick.
+- [x] **Background-pause vs. upgrade-selection input overlap.** ~~Prevent a
+      "tap to resume" input from also registering as an upgrade-card
+      pick~~ — **done.** Reproduced the ghost-input bug live before fixing
+      (a tap dismissing a force-shown PauseOverlay also silently applied
+      the hidden card underneath it). Fixed by having
+      `showBackgroundPause()` no-op while an upgrade choice is pending
+      (`MainScene.ts`) so the two overlays no longer stack in the first
+      place, plus a defensive `PauseOverlay.isShowing` check inside
+      `UpgradeSelection`'s own pointer handlers (`UpgradeSelection.ts`) as
+      a second layer. Verified with Playwright on desktop mouse and a
+      Pixel-7 touch viewport; see `PROJECT_AUDIT.md`'s P1 fix note.
 
 ## Should fix before release
 
@@ -63,6 +72,9 @@ release.
       scoped to cosmetics only (gameplay values untouched)
 - [x] Upgrade stacking capped at 10 per upgrade; fire interval floored at
       0.1s independent of the cap; no dead-end upgrade screen when maxed
+- [x] Background pause and upgrade selection no longer conflict: no
+      layered overlays, no ghost-applied upgrades, no stuck state, no
+      listener accumulation across repeated cycles (desktop + touch)
 
 ## Re-run before shipping
 

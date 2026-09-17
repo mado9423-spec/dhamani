@@ -73,7 +73,10 @@ export class MainScene extends Phaser.Scene {
     this.deathScreen = new DeathScreen(this, GAME_WIDTH, GAME_HEIGHT);
     this.announcement = new Announcement(this);
     this.bossHealthBar = new BossHealthBar(this);
-    this.upgradeSelection = new UpgradeSelection(this);
+    // UpgradeSelection must be constructed (and so register its pointer
+    // listener) before PauseOverlay — see UpgradeSelection's own doc
+    // comment for why the ordering matters, not just the reference.
+    this.upgradeSelection = new UpgradeSelection(this, () => this.pauseOverlay.isShowing);
     this.victoryScreen = new VictoryScreen(this, GAME_WIDTH, GAME_HEIGHT);
     this.pauseOverlay = new PauseOverlay(this);
 
@@ -149,7 +152,15 @@ export class MainScene extends Phaser.Scene {
   }
 
   private showBackgroundPause(): void {
-    if (this.pauseOverlay.isShowing) {
+    // The upgrade-selection screen is already a valid, intentional paused
+    // state on its own (`paused`) — layering the background-pause gate on
+    // top of it would mean two independent full-screen overlays with
+    // their own pointer handlers visible at once, which previously let a
+    // single tap meant to dismiss "Paused" also land on a hidden upgrade
+    // card underneath and silently apply it. Backgrounding/foregrounding
+    // while choosing an upgrade now simply leaves that screen exactly as
+    // it was — no extra gate, nothing to dismiss, nothing destroyed.
+    if (this.paused || this.pauseOverlay.isShowing) {
       return;
     }
 
