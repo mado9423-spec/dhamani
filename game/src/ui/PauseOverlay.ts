@@ -33,6 +33,7 @@ export class PauseOverlay {
         fontSize: "32px",
         color: "#e6fffb",
       })
+      .setShadow(2, 2, "#000000", 5, false, true)
       .setOrigin(0.5)
       .setScrollFactor(0)
       .setDepth(5001)
@@ -44,6 +45,7 @@ export class PauseOverlay {
         fontSize: "14px",
         color: "#8892a6",
       })
+      .setShadow(1, 1, "#000000", 3, false, true)
       .setOrigin(0.5)
       .setScrollFactor(0)
       .setDepth(5001)

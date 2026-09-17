@@ -1,6 +1,7 @@
 import Phaser from "phaser";
 import { AudioManager } from "../audio/AudioManager";
 import { GAME_HEIGHT, GAME_WIDTH, WORLD_HEIGHT, WORLD_WIDTH, COLORS } from "../config/GameConfig";
+import { NIGHTS } from "../config/NightConfig";
 import { QUALITY_PRESETS, QUALITY_REGISTRY_KEY, QualityLevel, QualitySettings } from "../config/QualityConfig";
 import { CAMPAIGN_COMPLETE_MARKER, DEFAULT_SAVE_DATA, SAVE_KEY, SaveData } from "../config/SaveConfig";
 import { MAX_UPGRADE_LEVEL, UPGRADE_POOL, UpgradeDefinition } from "../config/UpgradeConfig";
@@ -98,7 +99,7 @@ export class MainScene extends Phaser.Scene {
     this.pauseOverlay = new PauseOverlay(this);
 
     this.enemyManager = new EnemyManager(this);
-    this.combatSystem = new CombatSystem(this, this.enemyManager, quality, this.audioManager);
+    this.combatSystem = new CombatSystem(this, this.enemyManager, quality, this.audioManager, this.screenFx);
     this.nightManager = new NightManager(this.enemyManager);
     this.wireNightEvents();
     this.nightManager.start();
@@ -242,6 +243,9 @@ export class MainScene extends Phaser.Scene {
       this.announcement.show(`Night ${nightNumber} — Wave ${waveNumber}/${totalWaves}`);
       this.hud.setWaveStatus(`Night ${nightNumber} · Wave ${waveNumber}/${totalWaves}`);
       this.audioManager.play("waveStart");
+      // Atmosphere darkens/cools progressively across the campaign: 0 at
+      // Night 1, 1 by Night 7.
+      this.screenFx.setNightLevel((nightNumber - 1) / (NIGHTS.length - 1));
     });
 
     this.nightManager.on(NightManagerEvents.BOSS_INTRO, ({ nightNumber, isFinalNight }: BossIntroPayload) => {
@@ -254,6 +258,7 @@ export class MainScene extends Phaser.Scene {
       this.bossHealthBar.show(isFinalNight);
       this.audioManager.play("bossStart");
       this.screenFx.flash(COLORS.bossHealthFill, 0.18, 350);
+      this.screenFx.pulseImpact(0.4, 400);
     });
 
     this.nightManager.on(NightManagerEvents.NIGHT_COMPLETE, ({ nightNumber, isFinalNight }: NightCompletePayload) => {
@@ -272,6 +277,7 @@ export class MainScene extends Phaser.Scene {
       if (this.quality.screenShakeEnabled) {
         this.cameras.main.shake(200, 0.006 * this.quality.screenShakeIntensityScale);
       }
+      this.screenFx.pulseImpact(0.55, 500);
 
       if (isFinalNight) {
         this.persistRunResult();

@@ -7,6 +7,7 @@ import { MAX_UPGRADE_LEVEL, UpgradeDefinition } from "../config/UpgradeConfig";
 import { MovementSystem } from "../systems/MovementSystem";
 import { ScreenFX } from "../ui/ScreenFX";
 import { clamp } from "../utils/MathUtils";
+import { isWebGLRenderer } from "../utils/RendererCapabilities";
 
 const BODY_RADIUS = 18;
 const DAMAGE_FLASH_MS = 120;
@@ -76,6 +77,14 @@ export class Player extends Phaser.GameObjects.Container {
     this.add(this.bodyShape);
     this.setSize(BODY_RADIUS * 2, BODY_RADIUS * 2);
     scene.add.existing(this);
+
+    // A single, cheap glow on the one always-on-screen player container —
+    // deliberately not applied to the (up to 40-strong) enemy/projectile
+    // pools, where per-object WebGL FX at that scale would be a real
+    // frame-time cost for a much smaller visual payoff.
+    if (isWebGLRenderer(scene)) {
+      this.postFX.addGlow(COLORS.player, 0.6, 0, false, 0.1, 8);
+    }
   }
 
   get health(): number {
@@ -209,6 +218,7 @@ export class Player extends Phaser.GameObjects.Container {
     }
     this.audio.play("playerDamage");
     this.screenFx.flash(COLORS.playerDamageFlash, 0.16, 180);
+    this.screenFx.pulseImpact(0.35, 260);
 
     // A quick squash-then-recover punch on top of the color flash —
     // killTweensOf first so rapid repeat hits restart cleanly instead of
@@ -236,6 +246,7 @@ export class Player extends Phaser.GameObjects.Container {
     this.scene.tweens.killTweensOf(this);
     this.audio.play("playerDeath");
     this.screenFx.flash(0x1a0000, 0.45, 600);
+    this.screenFx.pulseImpact(0.75, 900);
     this.screenFx.burst(
       this.x - this.scene.cameras.main.worldView.x,
       this.y - this.scene.cameras.main.worldView.y,

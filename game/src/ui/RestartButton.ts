@@ -128,20 +128,19 @@ export class RestartButton {
     this.activated = true;
     const callback = this.onPress;
 
-    // A quick "punch" before the button (and everything else on this
-    // overlay) is torn down, so the press reads as an intentional hit
-    // rather than an instant cut.
-    this.scene.tweens.killTweensOf(this.container);
-    this.scene.tweens.add({
-      targets: this.container,
-      scale: { from: 1, to: 0.9 },
-      duration: 70,
-      yoyo: true,
-      ease: "Sine.InOut",
-      onComplete: () => {
-        this.hide();
-        callback?.();
-      },
-    });
+    // The actual state change (hide, invoke the callback — which for
+    // both call sites triggers scene.restart()) runs synchronously and
+    // immediately. An earlier version deferred this into a cosmetic
+    // "punch" tween's onComplete, which repeated Playwright runs showed
+    // could intermittently never fire (Phaser's tween-completion timing
+    // relative to the same-frame input event isn't guaranteed) — leaving
+    // the restart button looking pressed but never actually restarting.
+    // Real game logic must never depend on a decorative animation
+    // finishing, so there is no punch tween here at all: the whole
+    // screen this button lives on is destroyed by the scene restart
+    // within about one frame regardless, leaving no meaningful window
+    // for a press animation to be seen anyway.
+    this.hide();
+    callback?.();
   }
 }

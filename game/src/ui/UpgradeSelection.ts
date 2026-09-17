@@ -5,13 +5,25 @@ import { UpgradeDefinition } from "../config/UpgradeConfig";
 const CARD_WIDTH = 220;
 const CARD_HEIGHT = 160;
 const CARD_GAP = 24;
+const CARD_RADIUS = 12;
 const CARD_STROKE = 0x4fd1c5;
+const CARD_FILL_TOP = 0x232a3d;
+const CARD_FILL_BOTTOM = 0x161b28;
 
 interface CardEntry {
   container: Phaser.GameObjects.Container;
-  background: Phaser.GameObjects.Rectangle;
+  background: Phaser.GameObjects.Graphics;
   bounds: Phaser.Geom.Rectangle;
   upgrade: UpgradeDefinition;
+}
+
+/** Rounded, gradient-filled card panel — drawn once per hover-state change. */
+function drawCard(graphics: Phaser.GameObjects.Graphics, hovered: boolean): void {
+  graphics.clear();
+  graphics.fillGradientStyle(CARD_FILL_TOP, CARD_FILL_TOP, CARD_FILL_BOTTOM, CARD_FILL_BOTTOM, 0.97);
+  graphics.fillRoundedRect(-CARD_WIDTH / 2, -CARD_HEIGHT / 2, CARD_WIDTH, CARD_HEIGHT, CARD_RADIUS);
+  graphics.lineStyle(2, CARD_STROKE, hovered ? 1 : 0.6);
+  graphics.strokeRoundedRect(-CARD_WIDTH / 2, -CARD_HEIGHT / 2, CARD_WIDTH, CARD_HEIGHT, CARD_RADIUS);
 }
 
 /**
@@ -62,6 +74,7 @@ export class UpgradeSelection {
         fontSize: "26px",
         color: "#e6fffb",
       })
+      .setShadow(2, 2, "#000000", 5, false, true)
       .setOrigin(0.5)
       .setScrollFactor(0)
       .setDepth(4001)
@@ -113,11 +126,13 @@ export class UpgradeSelection {
   private createCard(x: number, y: number, upgrade: UpgradeDefinition, index: number): CardEntry {
     const container = this.scene.add.container(x, y).setScrollFactor(0).setDepth(4001);
 
-    const background = this.scene.add
-      .rectangle(0, 0, CARD_WIDTH, CARD_HEIGHT, 0x1a1f2e, 0.95)
-      .setStrokeStyle(2, CARD_STROKE, 0.6);
+    const background = this.scene.add.graphics();
+    drawCard(background, false);
 
-    const icon = this.scene.add.text(0, -40, upgrade.icon, { fontSize: "40px" }).setOrigin(0.5);
+    const icon = this.scene.add
+      .text(0, -40, upgrade.icon, { fontSize: "40px" })
+      .setShadow(1, 2, "#000000", 4, false, true)
+      .setOrigin(0.5);
 
     const label = this.scene.add
       .text(0, 30, upgrade.label, {
@@ -127,6 +142,7 @@ export class UpgradeSelection {
         align: "center",
         wordWrap: { width: CARD_WIDTH - 24 },
       })
+      .setShadow(1, 1, "#000000", 3, false, true)
       .setOrigin(0.5);
 
     container.add([background, icon, label]);
@@ -158,9 +174,13 @@ export class UpgradeSelection {
       return;
     }
 
-    this.hoveredCard?.background.setStrokeStyle(2, CARD_STROKE, 0.6);
+    if (this.hoveredCard) {
+      drawCard(this.hoveredCard.background, false);
+    }
     this.hoveredCard = hit;
-    this.hoveredCard?.background.setStrokeStyle(2, CARD_STROKE, 1);
+    if (this.hoveredCard) {
+      drawCard(this.hoveredCard.background, true);
+    }
   }
 
   private handlePointerUp(pointer: Phaser.Input.Pointer): void {
@@ -179,30 +199,47 @@ export class UpgradeSelection {
   }
 
   private choose(card: CardEntry): void {
-    // Block further input immediately (synchronously) even though the
-    // visible hide/cleanup is deferred a beat for the press-punch below.
+    // The actual state transition (hide, clear, invoke the callback) runs
+    // synchronously and immediately — it must never be gated behind a
+    // cosmetic tween's onComplete. An earlier version deferred all of
+    // this into the punch tween's onComplete below, which was found (via
+    // repeated Playwright runs) to intermittently never fire — Phaser's
+    // tween-completion callback timing relative to the same-frame input
+    // event isn't guaranteed, so a purely decorative animation ended up
+    // occasionally leaving the game paused forever with no way to
+    // recover. Real game logic must never depend on an animation finishing.
     this.active = false;
     this.hoveredCard = null;
     this.scene.input.setDefaultCursor("default");
+    this.overlay.setVisible(false);
+    this.title.setVisible(false);
 
     const callback = this.onChoose;
     const upgrade = card.upgrade;
     this.onChoose = null;
 
+    // Every other card is cleared immediately; the chosen one gets its
+    // own short, purely cosmetic punch + fade before self-destroying —
+    // nothing downstream waits on it.
+    this.cards
+      .filter((entry) => entry !== card)
+      .forEach((entry) => {
+        this.scene.tweens.killTweensOf(entry.container);
+        entry.container.destroy();
+      });
+    this.cards.length = 0;
+
     this.scene.tweens.killTweensOf(card.container);
     this.scene.tweens.add({
       targets: card.container,
-      scale: { from: 1, to: 0.9 },
-      duration: 70,
-      yoyo: true,
-      ease: "Sine.InOut",
-      onComplete: () => {
-        this.overlay.setVisible(false);
-        this.title.setVisible(false);
-        this.clearCards();
-        callback?.(upgrade);
-      },
+      scale: 0.85,
+      alpha: 0,
+      duration: 140,
+      ease: "Sine.In",
+      onComplete: () => card.container.destroy(),
     });
+
+    callback?.(upgrade);
   }
 
   private clearCards(): void {

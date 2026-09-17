@@ -12,6 +12,7 @@ export class Announcement {
         fontSize: "30px",
         color: "#e6fffb",
       })
+      .setShadow(2, 2, "#000000", 6, false, true)
       .setOrigin(0.5)
       .setScrollFactor(0)
       .setDepth(2600)

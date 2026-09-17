@@ -2,6 +2,7 @@ import Phaser from "phaser";
 import { COLORS } from "../config/GameConfig";
 import { EnemyDefinition, EnemyStats, EnemyTypeId, getEnemyDefinition } from "../config/EnemyConfig";
 import { clamp } from "../utils/MathUtils";
+import { isWebGLRenderer } from "../utils/RendererCapabilities";
 import { Player } from "./Player";
 
 const HIT_FLASH_MS = 90;
@@ -21,6 +22,7 @@ export class Enemy extends Phaser.GameObjects.Container {
   private readonly bodyShape: Phaser.GameObjects.Arc;
   private attackTimer = 0;
   private dying = false;
+  private readonly webgl: boolean;
   // Bumped every spawn(). A hit-flash's delayedCall captures this and
   // checks it still matches before touching this (pooled) instance, so
   // it can never revert the color of whatever this slot was reused for
@@ -30,6 +32,8 @@ export class Enemy extends Phaser.GameObjects.Container {
 
   constructor(scene: Phaser.Scene) {
     super(scene, 0, 0);
+
+    this.webgl = isWebGLRenderer(scene);
 
     const walker = getEnemyDefinition("walker");
     this.stats = { ...walker.stats };
@@ -86,6 +90,7 @@ export class Enemy extends Phaser.GameObjects.Container {
     this.bodyShape.setFillStyle(definition.visual.color);
     this.bodyShape.setStrokeStyle(definition.visual.strokeWidth, definition.visual.strokeColor);
     this.setSize(definition.visual.radius * 2, definition.visual.radius * 2);
+    this.applyBossGlow(type, definition.visual.color);
 
     this.setPosition(x, y);
     this.setScale(1);
@@ -151,6 +156,27 @@ export class Enemy extends Phaser.GameObjects.Container {
     }
 
     return false;
+  }
+
+  /**
+   * A real WebGL glow, but only for boss/finalBoss — never the common
+   * walker/fast/tank types, which can have up to 40 concurrent instances
+   * (see ENEMY_POOL_SIZE); per-object FX at that scale would be a real
+   * frame-time cost. A boss is always exactly one at a time, so it's
+   * effectively free. This pooled slot may previously have been a boss on
+   * an earlier spawn(), so the glow is always reset first regardless of
+   * the new type, not just conditionally added.
+   */
+  private applyBossGlow(type: EnemyTypeId, color: number): void {
+    if (!this.webgl) {
+      return;
+    }
+
+    this.resetPostPipeline();
+
+    if (type === "boss" || type === "finalBoss") {
+      this.postFX.addGlow(color, 0.8, 0, false, 0.1, 12);
+    }
   }
 
   private playHitFlash(): void {

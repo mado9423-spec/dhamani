@@ -38,6 +38,7 @@ export class VictoryScreen {
         fontSize: "40px",
         color: "#4fd1c5",
       })
+      .setShadow(3, 3, "#000000", 8, false, true)
       .setOrigin(0.5)
       .setScrollFactor(0)
       .setDepth(3001)
@@ -49,6 +50,7 @@ export class VictoryScreen {
         fontSize: "16px",
         color: "#e6fffb",
       })
+      .setShadow(2, 2, "#000000", 4, false, true)
       .setOrigin(0.5)
       .setScrollFactor(0)
       .setDepth(3001)

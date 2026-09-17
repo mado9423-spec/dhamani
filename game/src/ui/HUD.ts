@@ -2,6 +2,7 @@ import Phaser from "phaser";
 import { COLORS, GAME_WIDTH } from "../config/GameConfig";
 import { describeBestNight } from "../config/SaveConfig";
 import { HealthChangedPayload, Player, PlayerEvents, XpChangedPayload } from "../entities/Player";
+import { BarStyle, drawEnergyBar } from "./BarRenderer";
 import { clamp } from "../utils/MathUtils";
 import { SafeAreaInsets } from "../utils/SafeArea";
 
@@ -9,6 +10,7 @@ const BAR_WIDTH = 200;
 const HEALTH_BAR_HEIGHT = 14;
 const XP_BAR_HEIGHT = 6;
 const LOW_HEALTH_RATIO = 0.3;
+const TEXT_SHADOW_COLOR = "#000000";
 
 interface Layout {
   barX: number;
@@ -19,6 +21,31 @@ interface Layout {
   waveY: number;
 }
 
+const HEALTH_STYLE: BarStyle = {
+  radius: 7,
+  trackColor: COLORS.healthBarBg,
+  trackAlpha: 1,
+  fillColorTop: COLORS.healthBarFill,
+  fillColorBottom: COLORS.healthBarFillDark,
+  glowColor: COLORS.healthBarFill,
+};
+
+const HEALTH_STYLE_LOW: BarStyle = {
+  ...HEALTH_STYLE,
+  fillColorTop: COLORS.healthBarFillLow,
+  fillColorBottom: COLORS.healthBarFillLowDark,
+  glowColor: COLORS.healthBarFillLow,
+};
+
+const XP_STYLE: BarStyle = {
+  radius: 3,
+  trackColor: COLORS.xpBarBg,
+  trackAlpha: 1,
+  fillColorTop: COLORS.xpBarFill,
+  fillColorBottom: COLORS.xpBarFillDark,
+  glowColor: COLORS.xpBarFill,
+};
+
 /**
  * Screen-space overlay: title/hint, best-night line, health bar, XP bar +
  * level, and coin count. Stays fixed to the camera and reacts to Player
@@ -26,22 +53,26 @@ interface Layout {
  * offset by the device's safe-area insets, recomputed via
  * updateSafeArea() on resize/orientation change so nothing ends up under
  * a notch/status-bar cutout after rotating (mirrors what InputManager
- * already does for the touch controls).
+ * already does for the touch controls). Health/XP bars are drawn via
+ * `drawEnergyBar()` — rounded, gradient-filled, glow-edged — redrawn on
+ * every value change and every reposition, since Graphics has no
+ * intrinsic "resize" the way the old flat Rectangle bars did.
  */
 export class HUD {
   private readonly player: Player;
   private lastLayout: Layout;
+  private lastHealthRatio = 1;
+  private lastHealthLow = false;
+  private lastXpRatio = 0;
 
   private readonly title: Phaser.GameObjects.Text;
   private readonly hint: Phaser.GameObjects.Text;
   private readonly bestText: Phaser.GameObjects.Text;
 
-  private readonly healthBarBg: Phaser.GameObjects.Rectangle;
-  private readonly healthBarFill: Phaser.GameObjects.Rectangle;
+  private readonly healthBar: Phaser.GameObjects.Graphics;
   private readonly healthText: Phaser.GameObjects.Text;
 
-  private readonly xpBarBg: Phaser.GameObjects.Rectangle;
-  private readonly xpBarFill: Phaser.GameObjects.Rectangle;
+  private readonly xpBar: Phaser.GameObjects.Graphics;
   private readonly levelText: Phaser.GameObjects.Text;
 
   private readonly coinIcon: Phaser.GameObjects.Arc;
@@ -55,11 +86,13 @@ export class HUD {
 
     this.title = scene.add
       .text(barX, 12 + topY, "Survive: 7 Nights", { fontFamily: "monospace", fontSize: "20px", color: "#e6fffb" })
+      .setShadow(2, 2, TEXT_SHADOW_COLOR, 3, false, true)
       .setScrollFactor(0)
       .setDepth(2000);
 
     this.hint = scene.add
       .text(barX, 36 + topY, "Move: WASD / Arrows", { fontFamily: "monospace", fontSize: "12px", color: "#8892a6" })
+      .setShadow(1, 1, TEXT_SHADOW_COLOR, 2, false, true)
       .setScrollFactor(0)
       .setDepth(2000);
 
@@ -69,37 +102,22 @@ export class HUD {
         fontSize: "11px",
         color: "#8892a6",
       })
+      .setShadow(1, 1, TEXT_SHADOW_COLOR, 2, false, true)
       .setOrigin(0, 0)
       .setScrollFactor(0)
       .setDepth(2000);
 
-    this.healthBarBg = scene.add
-      .rectangle(barX, healthBarY, BAR_WIDTH, HEALTH_BAR_HEIGHT, COLORS.healthBarBg)
-      .setOrigin(0, 0)
-      .setScrollFactor(0)
-      .setDepth(2000);
-    this.healthBarFill = scene.add
-      .rectangle(barX, healthBarY, BAR_WIDTH, HEALTH_BAR_HEIGHT, COLORS.healthBarFill)
-      .setOrigin(0, 0)
-      .setScrollFactor(0)
-      .setDepth(2001);
+    this.healthBar = scene.add.graphics().setScrollFactor(0).setDepth(2000);
     this.healthText = scene.add
       .text(barX + BAR_WIDTH + 8, healthBarY - 1, "", { fontFamily: "monospace", fontSize: "12px", color: "#e6fffb" })
+      .setShadow(1, 1, TEXT_SHADOW_COLOR, 2, false, true)
       .setScrollFactor(0)
       .setDepth(2001);
 
-    this.xpBarBg = scene.add
-      .rectangle(barX, xpBarY, BAR_WIDTH, XP_BAR_HEIGHT, COLORS.xpBarBg)
-      .setOrigin(0, 0)
-      .setScrollFactor(0)
-      .setDepth(2000);
-    this.xpBarFill = scene.add
-      .rectangle(barX, xpBarY, 0, XP_BAR_HEIGHT, COLORS.xpBarFill)
-      .setOrigin(0, 0)
-      .setScrollFactor(0)
-      .setDepth(2001);
+    this.xpBar = scene.add.graphics().setScrollFactor(0).setDepth(2000);
     this.levelText = scene.add
       .text(barX + BAR_WIDTH + 8, xpBarY - 4, "", { fontFamily: "monospace", fontSize: "12px", color: "#8892a6" })
+      .setShadow(1, 1, TEXT_SHADOW_COLOR, 2, false, true)
       .setScrollFactor(0)
       .setDepth(2001);
 
@@ -109,11 +127,13 @@ export class HUD {
       .setDepth(2000);
     this.coinsText = scene.add
       .text(coinsRightX - 80, 14 + topY, "", { fontFamily: "monospace", fontSize: "16px", color: "#ffd54f" })
+      .setShadow(1, 1, TEXT_SHADOW_COLOR, 2, false, true)
       .setScrollFactor(0)
       .setDepth(2000);
 
     this.waveStatusText = scene.add
       .text(barX, waveY, "", { fontFamily: "monospace", fontSize: "12px", color: "#8892a6" })
+      .setShadow(1, 1, TEXT_SHADOW_COLOR, 2, false, true)
       .setScrollFactor(0)
       .setDepth(2000);
 
@@ -136,11 +156,9 @@ export class HUD {
     this.title.destroy();
     this.hint.destroy();
     this.bestText.destroy();
-    this.healthBarBg.destroy();
-    this.healthBarFill.destroy();
+    this.healthBar.destroy();
     this.healthText.destroy();
-    this.xpBarBg.destroy();
-    this.xpBarFill.destroy();
+    this.xpBar.destroy();
     this.levelText.destroy();
     this.coinIcon.destroy();
     this.coinsText.destroy();
@@ -160,12 +178,10 @@ export class HUD {
     this.hint.setPosition(barX, 36 + topY);
     this.bestText.setPosition(coinsRightX - 80, 34 + topY);
 
-    this.healthBarBg.setPosition(barX, healthBarY);
-    this.healthBarFill.setPosition(barX, healthBarY);
+    this.redrawHealthBar();
     this.healthText.setPosition(barX + BAR_WIDTH + 8, healthBarY - 1);
 
-    this.xpBarBg.setPosition(barX, xpBarY);
-    this.xpBarFill.setPosition(barX, xpBarY);
+    this.redrawXpBar();
     this.levelText.setPosition(barX + BAR_WIDTH + 8, xpBarY - 4);
 
     this.coinIcon.setPosition(coinsRightX - 96, 22 + topY);
@@ -184,16 +200,27 @@ export class HUD {
     return { barX, topY, healthBarY, xpBarY, coinsRightX, waveY };
   }
 
+  private redrawHealthBar(): void {
+    const { barX, healthBarY } = this.lastLayout;
+    const style = this.lastHealthLow ? HEALTH_STYLE_LOW : HEALTH_STYLE;
+    drawEnergyBar(this.healthBar, barX, healthBarY, BAR_WIDTH, HEALTH_BAR_HEIGHT, this.lastHealthRatio, style);
+  }
+
+  private redrawXpBar(): void {
+    const { barX, xpBarY } = this.lastLayout;
+    drawEnergyBar(this.xpBar, barX, xpBarY, BAR_WIDTH, XP_BAR_HEIGHT, this.lastXpRatio, XP_STYLE);
+  }
+
   private updateHealth({ health, maxHealth }: HealthChangedPayload): void {
-    const ratio = clamp(health / maxHealth, 0, 1);
-    this.healthBarFill.width = BAR_WIDTH * ratio;
-    this.healthBarFill.fillColor = ratio > LOW_HEALTH_RATIO ? COLORS.healthBarFill : COLORS.healthBarFillLow;
+    this.lastHealthRatio = clamp(health / maxHealth, 0, 1);
+    this.lastHealthLow = this.lastHealthRatio <= LOW_HEALTH_RATIO;
+    this.redrawHealthBar();
     this.healthText.setText(`${Math.ceil(health)}/${maxHealth} HP`);
   }
 
   private updateXp({ experience, experienceToNextLevel, level }: XpChangedPayload): void {
-    const ratio = clamp(experience / experienceToNextLevel, 0, 1);
-    this.xpBarFill.width = BAR_WIDTH * ratio;
+    this.lastXpRatio = clamp(experience / experienceToNextLevel, 0, 1);
+    this.redrawXpBar();
     this.levelText.setText(`Lv. ${level}`);
   }
 

@@ -1,9 +1,10 @@
 # RELEASE_CHECKLIST.md — Survive: 7 Nights
 
 Launch checklist derived from `PROJECT_AUDIT.md`. Checked items are verified
-working. **Status: Release Candidate — every item below is done and
-verified; see `PROJECT_AUDIT.md`'s "Release Candidate Readiness" section
-for the full report.** Last updated 2026-09-17 (RC pass).
+working. **Status: Release Candidate (visually overhauled) — every item
+below is done and verified; see `PROJECT_AUDIT.md`'s "Release Candidate
+Readiness" and "Visual Overhaul" sections for the full reports.** Last
+updated 2026-09-17 (visual-overhaul pass).
 
 ## Blocking (must fix before any release)
 
@@ -98,6 +99,52 @@ for the full report.** Last updated 2026-09-17 (RC pass).
       npm dependency). See `PROJECT_AUDIT.md` for the full list and the
       technical reasoning behind each implementation choice.
 
+## Visual overhaul (this pass)
+
+- [x] **Bloom & Glow.** Real `postFX.addGlow()` on Player (1 instance),
+      boss/final-boss enemies (≤1 concurrent), and all pooled Projectiles
+      (≤40 concurrent, `Projectile` converted `Arc`→`Container` to support
+      it). Common enemy types deliberately excluded — see performance note
+      below.
+- [x] **Screen post-processing.** Custom `ImpactFXPipeline`
+      (`src/fx/ImpactFXPipeline.ts`, hand-written GLSL chromatic-aberration
+      + radial-blur) on the main camera, triggered exclusively by
+      `ScreenFX.pulseImpact()` on damage/boss-hit/death/boss-defeat, idle
+      passthrough (`strength=0`) otherwise.
+- [x] **Procedural color grading.** Old hand-drawn corner-blob vignette
+      deleted; replaced with real `camera.postFX.addVignette()` plus a
+      `ColorMatrix` pipeline driving `ScreenFX.setNightLevel()` —
+      progressively darker/desaturated from Night 1 → Night 7. Verified via
+      Playwright reading actual `ColorMatrix.getData()` coefficients across
+      all 7 nights.
+- [x] **HUD/UI modernization.** `src/ui/BarRenderer.ts` (rounded-rect +
+      gradient fill + glow stroke) replaces 4 flat `Rectangle` bars in
+      `HUD`/`BossHealthBar`; `UpgradeSelection` card background converted
+      to the same style; text shadows added across every HUD/overlay text
+      element; HUD bars redraw correctly on orientation change.
+- [x] **Pipeline lifecycle / no leaks.** `ScreenFX.destroy()` calls
+      `camera.resetPostPipeline(true)`. Verified via Playwright: stable
+      `postPipelines`/`postPipelineInstances` counts across 3 consecutive
+      death→restart cycles.
+- [x] **`npx tsc --noEmit` / `npm run build`** clean on the full
+      visual-overhaul code.
+- [x] **Performance measured and honestly reported.** This sandbox's
+      browser renders WebGL in software (`SwiftShader`, no real GPU) — no
+      build reaches 60 FPS here, old or new. A controlled `git stash` A/B
+      shows a consistent ~2x relative slowdown from the 3 new
+      always-attached camera-level full-screen passes, flat across idle vs.
+      stress load (pointing to a fixed per-frame cost, not unbounded
+      scaling with entity count). Not addressed with an implementation
+      change since the design was already performance-conscious (glow
+      scoped to low-instance entities only, shader idle early-exit); see
+      `PROJECT_AUDIT.md`'s "Visual Overhaul" section for the full data and
+      reasoning.
+- [x] **Bonus fix (found via this pass's stress-testing):**
+      `UpgradeSelection.choose()`/`RestartButton.activate()` had a latent
+      ~1-in-3 race condition (state change gated behind a tween's
+      `onComplete`) inherited from the prior RC pass — fixed to transition
+      state synchronously. Verified 8/8 and 6/6 repeated runs post-fix.
+
 ## Verified working (re-confirm after any of the above changes)
 
 - [x] `npx tsc --noEmit` clean
@@ -142,4 +189,9 @@ restart, and confirm state is fully reset (HP, level, XP, coins, night/wave
 index, all pooled objects deactivated, best-night display on the HUD).
 Repeat death→restart and victory→restart a few times in a row to
 re-confirm no duplicate listeners/tweens/entities creep in. Reload the page
-after a death/victory to confirm the best-night record persisted.
+after a death/victory to confirm the best-night record persisted. Also
+confirm on a real GPU (not this sandbox's software renderer): glow on
+player/projectiles/boss, the vignette + night color grading shifting
+darker across nights, and the chromatic-aberration/blur pulse firing only
+on damage/boss-hit/death/boss-defeat moments — and that frame rate holds
+comfortably at 60 FPS on target hardware.

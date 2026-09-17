@@ -18,9 +18,12 @@ export const COLORS = {
   playerDead: 0x555b6e,
   healthBarBg: 0x2a1418,
   healthBarFill: 0x4caf50,
+  healthBarFillDark: 0x2e7031,
   healthBarFillLow: 0xff4d4f,
+  healthBarFillLowDark: 0xb23032,
   xpBarBg: 0x1a1f2e,
   xpBarFill: 0x4fd1c5,
+  xpBarFillDark: 0x2f8f86,
   coin: 0xffd54f,
   joystick: 0xffffff,
   fireButton: 0xff6b6b,
@@ -29,7 +32,9 @@ export const COLORS = {
   enemyHitFlash: 0xffffff,
   xpPickup: 0x4fd1c5,
   bossHealthFill: 0xb83280,
+  bossHealthFillDark: 0x7a1f56,
   finalBossHealthFill: 0x7f1d1d,
+  finalBossHealthFillDark: 0x4a1010,
 } as const;
 
 export function createGameConfig(

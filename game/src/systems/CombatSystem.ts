@@ -6,6 +6,7 @@ import { QualitySettings } from "../config/QualityConfig";
 import { Enemy } from "../entities/Enemy";
 import { Player } from "../entities/Player";
 import { Projectile } from "../entities/Projectile";
+import { ScreenFX } from "../ui/ScreenFX";
 import { EffectsManager } from "./EffectsManager";
 import { EnemyManager } from "./EnemyManager";
 import { PickupManager } from "./PickupManager";
@@ -24,6 +25,7 @@ export class CombatSystem {
   private readonly scene: Phaser.Scene;
   private readonly quality: QualitySettings;
   private readonly audio: AudioManager;
+  private readonly screenFx: ScreenFX;
   // Reused every shot instead of allocating a new Vector2 each time —
   // fire() only reads x/y out of it synchronously, never keeps it.
   private readonly scratchDirection = new Phaser.Math.Vector2();
@@ -33,11 +35,13 @@ export class CombatSystem {
     scene: Phaser.Scene,
     private readonly enemyManager: EnemyManager,
     quality: QualitySettings,
-    audio: AudioManager
+    audio: AudioManager,
+    screenFx: ScreenFX
   ) {
     this.scene = scene;
     this.quality = quality;
     this.audio = audio;
+    this.screenFx = screenFx;
     this.projectileManager = new ProjectileManager(scene);
     this.pickupManager = new PickupManager(scene);
     this.effectsManager = new EffectsManager(scene, quality);
@@ -121,6 +125,7 @@ export class CombatSystem {
     // only ever one at a time since only one boss is ever active.
     if (isBoss && this.quality.screenShakeEnabled) {
       this.scene.cameras.main.shake(60, 0.0015 * this.quality.screenShakeIntensityScale);
+      this.screenFx.pulseImpact(0.2, 180);
     }
 
     const killed = enemy.takeDamage(damage);

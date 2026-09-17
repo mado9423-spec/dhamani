@@ -27,6 +27,7 @@ export class DeathScreen {
         fontSize: "36px",
         color: "#ff4d4f",
       })
+      .setShadow(3, 3, "#000000", 6, false, true)
       .setOrigin(0.5)
       .setScrollFactor(0)
       .setDepth(3001)
