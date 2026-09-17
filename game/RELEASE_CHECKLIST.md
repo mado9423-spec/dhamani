@@ -1,11 +1,13 @@
 # RELEASE_CHECKLIST.md — Survive: 7 Nights
 
 Launch checklist derived from `PROJECT_AUDIT.md`. Checked items are verified
-working. **Status: Release Candidate (Dark Gothic / Eldritch redesign) —
-every item below is done and verified; see `PROJECT_AUDIT.md`'s "Release
-Candidate Readiness", "Visual Overhaul", and "Dark Gothic / Eldritch
-Redesign" sections for the full reports.** Last updated 2026-09-17 (Dark
-Gothic pass). Live at https://mado9423-spec.github.io/dhamani/.
+working. **Status: Release Candidate (Dark Gothic / Eldritch redesign,
+optional sprite-asset support) — every item below is done and verified;
+see `PROJECT_AUDIT.md`'s "Release Candidate Readiness", "Visual Overhaul",
+"Dark Gothic / Eldritch Redesign", and "Optional Sprite Assets with
+Fallback" sections for the full reports.** Last updated 2026-09-17
+(sprite-fallback pass). Live at https://mado9423-spec.github.io/dhamani/.
+Still zero external assets by default — `public/assets/` is empty.
 
 ## Blocking (must fix before any release)
 
@@ -185,6 +187,38 @@ Gothic pass). Live at https://mado9423-spec.github.io/dhamani/.
       https://mado9423-spec.github.io/dhamani/ (new build confirmed on the
       branch and already served; `index.html` itself sits behind GitHub
       Pages' ~10-minute CDN cache).
+
+## Optional sprite-asset support (this pass, not deployed as a visual change)
+
+- [x] **BootScene** attempts 9 sprite sheets (`config/AssetConfig.ts`),
+      defines per-sheet Phaser animations for whatever actually loads
+      (`config/AnimationConfig.ts`), and sets a single `hasSpriteAssets`
+      registry flag.
+- [x] **Player/Enemy/Weapon/Projectile** each branch once, in their
+      constructor, into a Sprite-based path or the existing zero-asset
+      vector-art path (unmodified, just relocated) — never both. Hit-flash
+      uses `setTintFill()`/`clearTint()` in sprite mode, same timing either
+      way. `CombatSystem` triggers the player's attack clip on fire.
+      `Weapon`'s recoil/cursor-swivel logic is completely untouched.
+- [x] **Bug found and fixed: `hasSpriteAssets` could go stale-true.**
+      Trusting the loader's `loaderror` event was fooled by Vite's dev
+      server answering a missing asset with its SPA-fallback `index.html`
+      (200 OK, wrong content type) instead of a 404. Fixed by checking
+      `scene.textures.exists(key)` directly in `create()` — authoritative
+      regardless of why a load failed. Caught and confirmed fixed via a
+      real round-trip: temporary placeholder PNGs in, confirmed sprite
+      mode + `fast`'s arachnid limbs both correct, PNGs removed, confirmed
+      fallback mode (and the limbs) correctly returned.
+- [x] **Both render paths verified**, not just one assumed from the other:
+      the full existing Dark Gothic Playwright suite re-passed against the
+      real (empty-assets) state; a separate suite against temporary
+      placeholder PNGs confirmed every entity actually builds a Sprite,
+      animations switch with movement, tint-flash/death don't throw, a
+      synthetic combat drive lands a kill with a real projectile sprite in
+      flight, and `enemy.radius` still matches `EnemyConfig` exactly. The
+      placeholder PNGs were deleted immediately after — `public/assets/`
+      still holds only `.gitkeep`, confirmed via `git status`.
+- [x] **`npx tsc --noEmit` / `npm run build`** clean throughout.
 
 ## Verified working (re-confirm after any of the above changes)
 

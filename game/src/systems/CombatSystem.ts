@@ -92,6 +92,8 @@ export class CombatSystem {
     const muzzle = player.weapon.triggerFire(this.scratchDirection);
     this.projectileManager.fire(muzzle.x, muzzle.y, this.scratchDirection, PROJECTILE_SPEED, player.damage);
     this.effectsManager.spawnMuzzleFlash(muzzle.x, muzzle.y, muzzle.angle);
+    // A no-op in vector-art mode (no sprite to animate) — see Player.ts.
+    player.playAttackAnimation();
     this.audio.play("fire");
     this.fireTimer = CombatSystem.fireIntervalFor(player.attackSpeed);
   }

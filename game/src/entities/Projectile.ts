@@ -1,4 +1,5 @@
 import Phaser from "phaser";
+import { SPRITE_ASSETS_REGISTRY_KEY } from "../config/AssetConfig";
 import { PROJECTILE_MAX_DISTANCE, PROJECTILE_RADIUS } from "../config/CombatConfig";
 import { COLORS } from "../config/GameConfig";
 import { isWebGLRenderer } from "../utils/RendererCapabilities";
@@ -29,7 +30,10 @@ const TRAIL_INTERVAL_PX = 14;
 export class Projectile extends Phaser.GameObjects.Container {
   readonly radius = PROJECTILE_RADIUS;
   damage = 0;
-  private readonly bodyShape: Phaser.GameObjects.Ellipse;
+  // Exactly one of these is non-null, chosen once in the constructor —
+  // same dual-path pattern as Player/Enemy/Weapon (see AssetConfig.ts).
+  private readonly sprite: Phaser.GameObjects.Sprite | null;
+  private readonly bodyShape: Phaser.GameObjects.Ellipse | null;
   private readonly velocity = new Phaser.Math.Vector2();
   private travelled = 0;
   private trailAccum = 0;
@@ -37,9 +41,22 @@ export class Projectile extends Phaser.GameObjects.Container {
   constructor(scene: Phaser.Scene, private readonly onTrail: (x: number, y: number) => void) {
     super(scene, 0, 0);
 
-    this.bodyShape = scene.add.ellipse(0, 0, PROJECTILE_RADIUS * 2.6, PROJECTILE_RADIUS * 1.4, COLORS.projectile);
-    this.bodyShape.setStrokeStyle(1.5, COLORS.projectileGlow, 0.85);
-    this.add(this.bodyShape);
+    const hasSpriteAssets = (scene.registry.get(SPRITE_ASSETS_REGISTRY_KEY) as boolean | undefined) ?? false;
+    if (hasSpriteAssets) {
+      // Reuses the same weapon_bolt sheet as the held weapon (see
+      // Weapon.ts) — only reachable once that sheet actually exists;
+      // this project's current zero-asset state never takes this branch.
+      this.sprite = scene.add.sprite(0, 0, "weapon_bolt");
+      this.bodyShape = null;
+      this.add(this.sprite);
+    } else {
+      // Existing zero-asset vector-art rendering, unchanged.
+      this.sprite = null;
+      this.bodyShape = scene.add.ellipse(0, 0, PROJECTILE_RADIUS * 2.6, PROJECTILE_RADIUS * 1.4, COLORS.projectile);
+      this.bodyShape.setStrokeStyle(1.5, COLORS.projectileGlow, 0.85);
+      this.add(this.bodyShape);
+    }
+
     this.setSize(PROJECTILE_RADIUS * 2, PROJECTILE_RADIUS * 2);
     scene.add.existing(this);
     this.setActive(false);

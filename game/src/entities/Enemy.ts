@@ -1,4 +1,6 @@
 import Phaser from "phaser";
+import { enemyAnimKey } from "../config/AnimationConfig";
+import { SPRITE_ASSETS_REGISTRY_KEY } from "../config/AssetConfig";
 import { COLORS } from "../config/GameConfig";
 import { EnemyDefinition, EnemyStats, EnemyTypeId, getEnemyDefinition } from "../config/EnemyConfig";
 import { clamp } from "../utils/MathUtils";
@@ -46,11 +48,20 @@ export class Enemy extends Phaser.GameObjects.Container {
 
   private stats: EnemyStats;
   private hitRadius = 0;
+  private readonly hasSpriteAssets: boolean;
   private readonly shadow: Phaser.GameObjects.Ellipse;
   private readonly visualGroup: Phaser.GameObjects.Container;
-  private readonly bodyBlob: Phaser.GameObjects.Ellipse;
-  private readonly eyeLeft: Phaser.GameObjects.Arc;
-  private readonly eyeRight: Phaser.GameObjects.Arc;
+  // Sprite-mode field (see AssetConfig.ts) — null in the (current,
+  // default) vector-art mode. Its texture is swapped per spawn() since a
+  // pooled Enemy instance is reused across different types over its
+  // lifetime.
+  private readonly sprite: Phaser.GameObjects.Sprite | null;
+  // Vector-art mode fields (the existing zero-asset rendering) — null/
+  // empty in sprite mode. Neither branch deletes the other's
+  // construction code; exactly one runs, chosen once in the constructor.
+  private readonly bodyBlob: Phaser.GameObjects.Ellipse | null;
+  private readonly eyeLeft: Phaser.GameObjects.Arc | null;
+  private readonly eyeRight: Phaser.GameObjects.Arc | null;
   private readonly limbs: LimbRig[] = [];
   private attackTimer = 0;
   private dying = false;
@@ -70,6 +81,7 @@ export class Enemy extends Phaser.GameObjects.Container {
     super(scene, 0, 0);
 
     this.webgl = isWebGLRenderer(scene);
+    this.hasSpriteAssets = (scene.registry.get(SPRITE_ASSETS_REGISTRY_KEY) as boolean | undefined) ?? false;
 
     const walker = getEnemyDefinition("walker");
     this.stats = { ...walker.stats };
@@ -77,16 +89,34 @@ export class Enemy extends Phaser.GameObjects.Container {
     this.shadow = scene.add.ellipse(0, 0, 10, 4, 0x000000, 0.6);
     this.visualGroup = scene.add.container(0, 0);
 
-    this.bodyBlob = scene.add.ellipse(0, 0, 20, 17, walker.visual.color);
-    this.bodyBlob.setStrokeStyle(walker.visual.strokeWidth, walker.visual.strokeColor);
-    this.eyeLeft = scene.add.circle(0, 0, 1.5, walker.visual.eyeColor);
-    this.eyeRight = scene.add.circle(0, 0, 1.5, walker.visual.eyeColor);
+    if (this.hasSpriteAssets) {
+      // Sprite-based rendering — only reachable once real sprite sheets
+      // exist (BootScene only sets hasSpriteAssets true if every sheet in
+      // AssetConfig.ts loaded, "walker" included), so this project's
+      // current zero-asset state never takes this branch. The texture
+      // itself is re-picked per spawn() since a pooled instance is reused
+      // across different enemy types.
+      this.sprite = scene.add.sprite(0, 0, "walker");
+      this.sprite.setOrigin(0.5, 0.6);
+      this.bodyBlob = null;
+      this.eyeLeft = null;
+      this.eyeRight = null;
+      this.visualGroup.add(this.sprite);
+    } else {
+      // Existing zero-asset vector-art rendering, unchanged.
+      this.sprite = null;
+      this.bodyBlob = scene.add.ellipse(0, 0, 20, 17, walker.visual.color);
+      this.bodyBlob.setStrokeStyle(walker.visual.strokeWidth, walker.visual.strokeColor);
+      this.eyeLeft = scene.add.circle(0, 0, 1.5, walker.visual.eyeColor);
+      this.eyeRight = scene.add.circle(0, 0, 1.5, walker.visual.eyeColor);
 
-    for (let i = 0; i < LIMB_COUNT; i += 1) {
-      this.limbs.push(Enemy.buildLimb(scene));
+      for (let i = 0; i < LIMB_COUNT; i += 1) {
+        this.limbs.push(Enemy.buildLimb(scene));
+      }
+
+      this.visualGroup.add([...this.limbs.map((limb) => limb.pivot), this.bodyBlob, this.eyeLeft, this.eyeRight]);
     }
 
-    this.visualGroup.add([...this.limbs.map((limb) => limb.pivot), this.bodyBlob, this.eyeLeft, this.eyeRight]);
     this.add([this.shadow, this.visualGroup]);
     scene.add.existing(this);
     this.setActive(false);
@@ -154,18 +184,28 @@ export class Enemy extends Phaser.GameObjects.Container {
     this.shadow.setSize(radius * 1.6, radius * 0.55);
     this.shadow.setPosition(0, radius * 0.85);
 
-    this.bodyBlob.setSize(radius * 2, radius * 1.75);
-    this.bodyBlob.setFillStyle(definition.visual.color);
-    this.bodyBlob.setStrokeStyle(definition.visual.strokeWidth, definition.visual.strokeColor);
-    this.eyeLeft.setFillStyle(definition.visual.eyeColor);
-    this.eyeRight.setFillStyle(definition.visual.eyeColor);
-    this.eyeLeft.setPosition(-radius * 0.28, -radius * 0.15);
-    this.eyeRight.setPosition(radius * 0.28, -radius * 0.15);
-    this.eyeLeft.setRadius(Math.max(1.2, radius * 0.09));
-    this.eyeRight.setRadius(Math.max(1.2, radius * 0.09));
+    if (this.sprite) {
+      this.sprite.setTexture(type);
+      this.sprite.setDisplaySize(radius * 2, radius * 2);
+      this.sprite.clearTint();
+      const idleKey = enemyAnimKey(type, "idle");
+      if (this.scene.anims.exists(idleKey)) {
+        this.sprite.play(idleKey);
+      }
+    } else if (this.bodyBlob && this.eyeLeft && this.eyeRight) {
+      this.bodyBlob.setSize(radius * 2, radius * 1.75);
+      this.bodyBlob.setFillStyle(definition.visual.color);
+      this.bodyBlob.setStrokeStyle(definition.visual.strokeWidth, definition.visual.strokeColor);
+      this.eyeLeft.setFillStyle(definition.visual.eyeColor);
+      this.eyeRight.setFillStyle(definition.visual.eyeColor);
+      this.eyeLeft.setPosition(-radius * 0.28, -radius * 0.15);
+      this.eyeRight.setPosition(radius * 0.28, -radius * 0.15);
+      this.eyeLeft.setRadius(Math.max(1.2, radius * 0.09));
+      this.eyeRight.setRadius(Math.max(1.2, radius * 0.09));
 
-    this.showLimbs = definition.visual.style === "arachnid";
-    this.configureLimbs(radius, definition.visual.limbColor);
+      this.showLimbs = definition.visual.style === "arachnid";
+      this.configureLimbs(radius, definition.visual.limbColor);
+    }
 
     this.setSize(radius * 2, radius * 2);
     this.applyBossGlow(type, definition.visual.color);
@@ -255,14 +295,31 @@ export class Enemy extends Phaser.GameObjects.Container {
 
     this.visualGroup.y = walkBob(this.animTimeMs + this.phaseSeed, moving, BOB_AMPLITUDE, BOB_FREQUENCY_HZ);
     this.updateLimbs(moving);
+    this.updateSpriteAnimation(moving);
   }
 
-  /** Asymmetric, out-of-sync breathing — always running, the "unstable void slime" look. */
+  /** Asymmetric, out-of-sync breathing — always running, the "unstable void slime" look. Vector-art mode only. */
   private updatePulse(): void {
+    if (!this.bodyBlob) {
+      return;
+    }
+
     const t = this.animTimeMs / 1000;
     const scaleX = 1 + Math.sin(t * PULSE_FREQUENCY_HZ + this.phaseSeed) * PULSE_AMPLITUDE;
     const scaleY = 1 + Math.sin(t * PULSE_FREQUENCY_HZ * 1.3 + this.phaseSeed * 1.7 + 1.1) * PULSE_AMPLITUDE;
     this.bodyBlob.setScale(scaleX, scaleY);
+  }
+
+  /** Switches between idle/move clips as movement starts/stops. Sprite mode only, a no-op otherwise. */
+  private updateSpriteAnimation(moving: boolean): void {
+    if (!this.sprite) {
+      return;
+    }
+
+    const desired = enemyAnimKey(this.type, moving ? "move" : "idle");
+    if (this.scene.anims.exists(desired) && this.sprite.anims.currentAnim?.key !== desired) {
+      this.sprite.play(desired);
+    }
   }
 
   /** Eerie multi-joint twitch on each limb, only while actually moving. */
@@ -322,13 +379,28 @@ export class Enemy extends Phaser.GameObjects.Container {
   }
 
   private playHitFlash(): void {
+    const flashLifeId = this.lifeId;
+
+    if (this.sprite) {
+      this.sprite.setTintFill(COLORS.enemyHitFlash);
+      this.scene.time.delayedCall(HIT_FLASH_MS, () => {
+        if (this.active && !this.dying && this.lifeId === flashLifeId) {
+          this.sprite?.clearTint();
+        }
+      });
+      return;
+    }
+
+    if (!this.bodyBlob) {
+      return;
+    }
+
     this.bodyBlob.setFillStyle(COLORS.enemyHitFlash);
     const originalColor = getEnemyDefinition(this.type).visual.color;
-    const flashLifeId = this.lifeId;
 
     this.scene.time.delayedCall(HIT_FLASH_MS, () => {
       if (this.active && !this.dying && this.lifeId === flashLifeId) {
-        this.bodyBlob.setFillStyle(originalColor);
+        this.bodyBlob?.setFillStyle(originalColor);
       }
     });
   }
@@ -336,6 +408,13 @@ export class Enemy extends Phaser.GameObjects.Container {
   private die(): void {
     this.dying = true;
     this.velocity.set(0, 0);
+
+    if (this.sprite) {
+      const deathKey = enemyAnimKey(this.type, "death");
+      if (this.scene.anims.exists(deathKey)) {
+        this.sprite.play(deathKey);
+      }
+    }
 
     // Stays "active" (so the pool won't reuse it) until the shrink/fade
     // animation finishes, then it's released back to the pool. Targets

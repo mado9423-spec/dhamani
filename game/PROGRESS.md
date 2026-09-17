@@ -1,9 +1,13 @@
 # PROGRESS.md — Survive: 7 Nights
 
 Current status snapshot. **Status: Release Candidate (Dark Gothic /
-Eldritch redesign).** Last updated: 2026-09-17 (Dark Gothic pass — see
-`PROJECT_AUDIT.md`'s "Dark Gothic / Eldritch Redesign" section for the
-full report). Live at https://mado9423-spec.github.io/dhamani/.
+Eldritch redesign, with optional sprite-asset support).** Last updated:
+2026-09-17 (sprite-fallback pass — see `PROJECT_AUDIT.md`'s "Optional
+Sprite Assets with Fallback" section for the full report). Live at
+https://mado9423-spec.github.io/dhamani/. The game still ships and runs
+today with zero external assets — `public/assets/` is empty — this pass
+only adds the *option* to use real sprite sheets later without touching
+gameplay.
 
 ## What exists and works (verified this session)
 
@@ -81,6 +85,19 @@ full report). Live at https://mado9423-spec.github.io/dhamani/.
   Both were rewritten so state transitions happen synchronously and any
   cosmetic animation is fire-and-forget. Verified with 8/8 and 6/6 repeated
   Playwright runs post-fix, plus a clean full-suite run.
+- **Optional sprite-asset support (zero-asset by default, still):**
+  `BootScene` now attempts to load 9 sprite sheets (player idle/run/
+  attack, each enemy type, the weapon bolt — see `config/AssetConfig.ts`)
+  and defines Phaser animations for whichever ones actually load
+  (`config/AnimationConfig.ts`). `Player`/`Enemy`/`Weapon`/`Projectile`
+  each pick a Sprite-based rendering path over the existing vector-art
+  one only when every sheet loaded — a single `hasSpriteAssets` registry
+  flag, correct today because `public/assets/` is genuinely empty. Both
+  render paths were exercised directly: the shipping (no-assets) path via
+  the full existing Playwright suite (unaffected), and the sprite path by
+  temporarily dropping in placeholder PNGs, confirming textures/
+  animations/tint-flash/hit-radius/combat all work, then removing them —
+  nothing under `public/assets/` changed as a result of this pass.
 
 ## What's left (all P0/P1 items and every item from this pass are done)
 

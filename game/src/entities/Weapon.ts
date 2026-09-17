@@ -1,4 +1,5 @@
 import Phaser from "phaser";
+import { SPRITE_ASSETS_REGISTRY_KEY } from "../config/AssetConfig";
 import {
   WEAPON_LENGTH,
   WEAPON_MOUNT_DISTANCE,
@@ -34,28 +35,35 @@ export class Weapon extends Phaser.GameObjects.Container {
 
     this.barrelGroup = scene.add.container(0, 0);
 
-    const handle = scene.add.rectangle(
-      WEAPON_MOUNT_DISTANCE,
-      0,
-      WEAPON_LENGTH * 0.55,
-      4,
-      COLORS.playerDead
-    );
-    handle.setOrigin(0, 0.5);
+    const hasSpriteAssets = (scene.registry.get(SPRITE_ASSETS_REGISTRY_KEY) as boolean | undefined) ?? false;
+    if (hasSpriteAssets) {
+      // Sprite-based rendering — only reachable once a real weapon_bolt
+      // sheet exists (see AssetConfig.ts); this project's current
+      // zero-asset state never takes this branch. Purely a presentation
+      // swap: triggerFire()/recoil below are completely unchanged.
+      const bolt = scene.add.sprite(WEAPON_MOUNT_DISTANCE + WEAPON_LENGTH * 0.5, 0, "weapon_bolt");
+      bolt.setOrigin(0.3, 0.5);
+      this.barrelGroup.add(bolt);
+    } else {
+      // Existing zero-asset vector-art rendering, unchanged.
+      const handle = scene.add.rectangle(WEAPON_MOUNT_DISTANCE, 0, WEAPON_LENGTH * 0.55, 4, COLORS.playerDead);
+      handle.setOrigin(0, 0.5);
 
-    const blade = scene.add.triangle(
-      WEAPON_MOUNT_DISTANCE + WEAPON_LENGTH * 0.55,
-      0,
-      0,
-      -4,
-      WEAPON_LENGTH * 0.5,
-      0,
-      0,
-      4,
-      COLORS.playerOutline
-    );
+      const blade = scene.add.triangle(
+        WEAPON_MOUNT_DISTANCE + WEAPON_LENGTH * 0.55,
+        0,
+        0,
+        -4,
+        WEAPON_LENGTH * 0.5,
+        0,
+        0,
+        4,
+        COLORS.playerOutline
+      );
 
-    this.barrelGroup.add([handle, blade]);
+      this.barrelGroup.add([handle, blade]);
+    }
+
     this.add(this.barrelGroup);
     scene.add.existing(this);
   }

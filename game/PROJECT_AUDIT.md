@@ -774,6 +774,96 @@ verification screenshots).
 
 ---
 
+## Optional Sprite Assets with Fallback (2026-09-17, sprite-fallback pass)
+
+Authority was given to wire up real sprite-sheet loading and Phaser
+animations for the player/enemies/weapon — attempted defensively, so the
+game keeps working exactly as it does today (zero external assets,
+`public/assets/` empty) until real art is actually supplied. Six-step
+scope, executed in order with `npx tsc --noEmit` after each step per the
+brief.
+
+### 1–2. BootScene loading + animation definitions — done
+
+`config/AssetConfig.ts` lists 9 sprite sheets (player idle/run/attack,
+walker/fast/tank/boss/finalBoss, weapon_bolt) and the new
+`SPRITE_ASSETS_REGISTRY_KEY`. `BootScene.preload()` queues all 9 via
+`this.load.spritesheet()`; `create()` sets a single `hasSpriteAssets`
+registry flag and calls `config/AnimationConfig.ts`'s `defineAnimations()`,
+which defines player idle/run/attack clips and, per enemy type, idle/
+move/hit/death clips sliced from placeholder frame ranges — each
+individually gated on `scene.textures.exists(key)`, so a partially-loaded
+set (not possible today, but architecturally sound) only defines
+animations for the sheets that actually came through.
+
+### 3–5. Dual-path rendering in Player/Enemy/Weapon/Projectile — done
+
+Each entity now branches once, in its constructor, on `hasSpriteAssets`:
+a `Sprite` (texture re-picked per `spawn()` for pooled Enemy/Projectile,
+since a pooled instance is reused across types/shots) in one branch, the
+existing zero-asset vector-art construction — completely unmodified,
+just moved into the other branch — in the other. Exactly one branch's
+GameObjects exist per instance; nothing is built then hidden. Hit-flash
+uses `setTintFill()`/`clearTint()` in sprite mode (the vector-art
+`setFillStyle()` equivalent doesn't exist on `Sprite`), with the same
+`HIT_FLASH_MS`/`DAMAGE_FLASH_MS` timing either way. `CombatSystem` gained
+one line, `player.playAttackAnimation()`, right where it already calls
+`weapon.triggerFire()` — a no-op in vector-art mode, otherwise the only
+way the newly-defined "attack" clip would ever actually play.
+`Weapon.triggerFire()`/`update()`'s recoil and cursor-swivel logic are
+completely untouched, exactly as scoped — only the handle/blade shapes
+became a `weapon_bolt` sprite.
+
+### 6. Verification — done, two real bugs found and fixed
+
+- **Bug found — `hasSpriteAssets` could go true against an empty
+  `public/assets/`:** the first implementation tracked failures via the
+  loader's `loaderror` event. Testing (deliberately: build placeholder
+  PNGs, confirm sprite mode activates and works, delete them, confirm
+  fallback mode re-activates) caught that it didn't — `fast`'s arachnid
+  limbs silently vanished after removing the test assets, because
+  `hasSpriteAssets` was still `true`. Root cause: Vite's dev server
+  answers a missing `public/assets/*.png` request with its SPA-fallback
+  `index.html` (a 200 OK of the wrong content type), not a real 404 —
+  Phaser's loader doesn't reliably fire `loaderror` for "got a 200 but it
+  doesn't decode as an image," even though its own texture cache
+  correctly ends up rejecting it (`scene.textures.exists(key)` was
+  already `false` the whole time). Fixed by checking that directly in
+  `create()` instead of trusting the event — authoritative regardless of
+  *why* a load didn't pan out. Reproduced and confirmed fixed with the
+  same placeholder-PNG round-trip.
+- **Expected, not a bug:** Phaser's own `File.js` unconditionally
+  `console.error`s "Failed to process file" for each sheet that fails to
+  decode — one line per entry in `SPRITE_SHEETS`, on every boot, for as
+  long as `public/assets/` stays empty. No loader option silences it, and
+  it's an accurate diagnostic (an optional asset really was attempted and
+  really isn't there), so it's documented in `BootScene.ts` rather than
+  worked around.
+- **`npx tsc --noEmit` / `npm run build`:** clean throughout, checked
+  after every step.
+- **Both render paths exercised, not just assumed:** the existing full
+  Dark Gothic Playwright suite re-run against the real (empty-assets)
+  state — unaffected, including hit-radius-vs-`EnemyConfig` and the
+  pipeline-leak check. Separately, 9 placeholder PNGs (plain solid-color
+  squares, generated on the fly, never committed) were dropped into
+  `public/assets/` to force `hasSpriteAssets: true` and confirm: every
+  entity actually constructs a `Sprite` (not just the flag flipping),
+  idle/run/move animations switch correctly with movement, hit tint-flash
+  and death don't throw, a synthetic combat drive still lands a kill and
+  awards XP with a real projectile sprite in flight, and `enemy.radius`
+  still matches `EnemyConfig` exactly — physics unaffected by which
+  render path is active. The placeholder files were deleted immediately
+  after and `git status` confirmed `public/` came back clean —
+  `public/assets/` still holds only `.gitkeep`.
+
+**Sprite-fallback pass status: complete.** The game ships and plays
+identically to before this pass (zero external assets); the option to
+drop in real sprite sheets later — matching the exact filenames/keys in
+`config/AssetConfig.ts` — now exists and is verified end-to-end, without
+needing any further code changes when that art arrives.
+
+---
+
 ## 1. Project Discovery (verified facts, not assumptions)
 
 - Stack: Phaser **3.90.0** installed (declared `^3.80.1`), TypeScript

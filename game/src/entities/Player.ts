@@ -1,5 +1,7 @@
 import Phaser from "phaser";
 import { AudioManager } from "../audio/AudioManager";
+import { playerAnimKey } from "../config/AnimationConfig";
+import { SPRITE_ASSETS_REGISTRY_KEY } from "../config/AssetConfig";
 import { COLORS } from "../config/GameConfig";
 import { createDefaultPlayerStats, getExperienceForLevel, PlayerStats, UpgradeId } from "../config/PlayerConfig";
 import { QualitySettings } from "../config/QualityConfig";
@@ -55,11 +57,19 @@ export class Player extends Phaser.GameObjects.Container {
   readonly weapon: Weapon;
 
   private readonly stats: PlayerStats;
+  private readonly hasSpriteAssets: boolean;
   private readonly visualGroup: Phaser.GameObjects.Container;
-  private readonly cloak: Phaser.GameObjects.Polygon;
-  private readonly hood: Phaser.GameObjects.Ellipse;
-  private readonly eyeLeft: Phaser.GameObjects.Arc;
-  private readonly eyeRight: Phaser.GameObjects.Arc;
+  // Sprite-mode fields (see AssetConfig.ts) — null in the (current,
+  // default) vector-art mode.
+  private readonly sprite: Phaser.GameObjects.Sprite | null;
+  // Vector-art mode fields (the existing zero-asset rendering) — null in
+  // sprite mode. Neither branch deletes the other's construction code;
+  // exactly one runs, chosen once in the constructor from
+  // `hasSpriteAssets`.
+  private readonly cloak: Phaser.GameObjects.Polygon | null;
+  private readonly hood: Phaser.GameObjects.Ellipse | null;
+  private readonly eyeLeft: Phaser.GameObjects.Arc | null;
+  private readonly eyeRight: Phaser.GameObjects.Arc | null;
   private readonly quality: QualitySettings;
   private readonly audio: AudioManager;
   private readonly screenFx: ScreenFX;
@@ -74,6 +84,7 @@ export class Player extends Phaser.GameObjects.Container {
     this.audio = audio;
     this.screenFx = screenFx;
     this.stats = createDefaultPlayerStats();
+    this.hasSpriteAssets = (scene.registry.get(SPRITE_ASSETS_REGISTRY_KEY) as boolean | undefined) ?? false;
 
     // Heavy drop shadow, anchored under the feet — fixed to the ground,
     // never bobs or flips with the body above it.
@@ -81,41 +92,60 @@ export class Player extends Phaser.GameObjects.Container {
 
     this.visualGroup = scene.add.container(0, 0);
 
-    // Cloak: wide at the hem, narrow at the shoulders — a ragged trapezoid
-    // rather than a clean silhouette, with two small torn "tatters"
-    // hanging off the hem for a worn, gothic edge.
-    this.cloak = scene.add.polygon(
-      0,
-      0,
-      [
-        -BODY_RADIUS * 0.42,
-        -BODY_RADIUS * 0.35,
-        BODY_RADIUS * 0.42,
-        -BODY_RADIUS * 0.35,
-        BODY_RADIUS * 0.88,
-        BODY_RADIUS * 0.95,
-        BODY_RADIUS * 0.3,
-        BODY_RADIUS * 0.7,
-        BODY_RADIUS * 0.05,
-        BODY_RADIUS * 1.0,
-        -BODY_RADIUS * 0.3,
-        BODY_RADIUS * 0.68,
-        -BODY_RADIUS * 0.88,
-        BODY_RADIUS * 0.95,
-      ],
-      COLORS.player
-    );
-    this.cloak.setStrokeStyle(1.5, COLORS.playerOutline, 0.5);
+    if (this.hasSpriteAssets) {
+      // Sprite-based rendering — only reachable once real sprite sheets
+      // exist (BootScene only sets hasSpriteAssets true if every sheet in
+      // AssetConfig.ts loaded), so this project's current zero-asset
+      // state never takes this branch.
+      this.sprite = scene.add.sprite(0, 0, "player_idle");
+      this.sprite.setOrigin(0.5, 0.6);
+      this.sprite.play(playerAnimKey("idle"));
+      this.cloak = null;
+      this.hood = null;
+      this.eyeLeft = null;
+      this.eyeRight = null;
+      this.visualGroup.add(this.sprite);
+    } else {
+      // Existing zero-asset vector-art rendering, unchanged.
+      this.sprite = null;
 
-    // Hood: a darker overlapping shape at the top, deep enough to read as
-    // an empty shadowed opening rather than a face.
-    this.hood = scene.add.ellipse(0, -BODY_RADIUS * 0.42, BODY_RADIUS * 1.05, BODY_RADIUS * 1.0, COLORS.playerDead);
-    this.hood.setStrokeStyle(1.5, COLORS.playerOutline, 0.35);
+      // Cloak: wide at the hem, narrow at the shoulders — a ragged
+      // trapezoid rather than a clean silhouette, with two small torn
+      // "tatters" hanging off the hem for a worn, gothic edge.
+      this.cloak = scene.add.polygon(
+        0,
+        0,
+        [
+          -BODY_RADIUS * 0.42,
+          -BODY_RADIUS * 0.35,
+          BODY_RADIUS * 0.42,
+          -BODY_RADIUS * 0.35,
+          BODY_RADIUS * 0.88,
+          BODY_RADIUS * 0.95,
+          BODY_RADIUS * 0.3,
+          BODY_RADIUS * 0.7,
+          BODY_RADIUS * 0.05,
+          BODY_RADIUS * 1.0,
+          -BODY_RADIUS * 0.3,
+          BODY_RADIUS * 0.68,
+          -BODY_RADIUS * 0.88,
+          BODY_RADIUS * 0.95,
+        ],
+        COLORS.player
+      );
+      this.cloak.setStrokeStyle(1.5, COLORS.playerOutline, 0.5);
 
-    this.eyeLeft = scene.add.circle(-BODY_RADIUS * 0.22, -BODY_RADIUS * 0.4, 1.8, COLORS.playerEyeGlow);
-    this.eyeRight = scene.add.circle(BODY_RADIUS * 0.22, -BODY_RADIUS * 0.4, 1.8, COLORS.playerEyeGlow);
+      // Hood: a darker overlapping shape at the top, deep enough to read
+      // as an empty shadowed opening rather than a face.
+      this.hood = scene.add.ellipse(0, -BODY_RADIUS * 0.42, BODY_RADIUS * 1.05, BODY_RADIUS * 1.0, COLORS.playerDead);
+      this.hood.setStrokeStyle(1.5, COLORS.playerOutline, 0.35);
 
-    this.visualGroup.add([this.cloak, this.hood, this.eyeLeft, this.eyeRight]);
+      this.eyeLeft = scene.add.circle(-BODY_RADIUS * 0.22, -BODY_RADIUS * 0.4, 1.8, COLORS.playerEyeGlow);
+      this.eyeRight = scene.add.circle(BODY_RADIUS * 0.22, -BODY_RADIUS * 0.4, 1.8, COLORS.playerEyeGlow);
+
+      this.visualGroup.add([this.cloak, this.hood, this.eyeLeft, this.eyeRight]);
+    }
+
     this.add([shadow, this.visualGroup]);
     this.setSize(BODY_RADIUS * 2, BODY_RADIUS * 2);
     scene.add.existing(this);
@@ -189,6 +219,7 @@ export class Player extends Phaser.GameObjects.Container {
     this.facing = resolveFacing(direction.x, this.facing);
     this.visualGroup.scaleX = this.facing;
     this.visualGroup.y = walkBob(this.animTimeMs, moving, BOB_AMPLITUDE, BOB_FREQUENCY_HZ);
+    this.updateSpriteAnimation(moving);
 
     const pointer = this.scene.input.activePointer;
     this.weapon.update(this.x, this.y, pointer.worldX, pointer.worldY, deltaSeconds);
@@ -268,15 +299,52 @@ export class Player extends Phaser.GameObjects.Container {
     this.emit(PlayerEvents.LEVEL_UP, { level: this.stats.level });
   }
 
-  /** A slow, ambient pulse on the hood's eyes — always running, not tied to movement. */
+  /** A slow, ambient pulse on the hood's eyes — always running, not tied to movement. Vector-art mode only. */
   private pulseEyes(): void {
+    if (!this.eyeLeft || !this.eyeRight) {
+      return;
+    }
+
     const alpha = 0.55 + Math.sin((this.animTimeMs / 1000) * EYE_PULSE_FREQUENCY_HZ * Math.PI * 2) * 0.35;
     this.eyeLeft.setAlpha(alpha);
     this.eyeRight.setAlpha(alpha);
   }
 
+  /** Switches between idle/run clips as movement starts/stops. Sprite mode only, a no-op otherwise. */
+  private updateSpriteAnimation(moving: boolean): void {
+    if (!this.sprite) {
+      return;
+    }
+
+    const desired = playerAnimKey(moving ? "run" : "idle");
+    if (this.sprite.anims.currentAnim?.key !== desired) {
+      this.sprite.play(desired);
+    }
+  }
+
+  /**
+   * Plays the one-shot attack clip on a shot fired (see CombatSystem),
+   * then falls back to idle/run once it finishes. Sprite mode only.
+   */
+  playAttackAnimation(): void {
+    if (!this.sprite) {
+      return;
+    }
+
+    this.sprite.play(playerAnimKey("attack"));
+    this.sprite.once(Phaser.Animations.Events.ANIMATION_COMPLETE, () => {
+      if (!this.dead) {
+        this.updateSpriteAnimation(this.velocity.lengthSq() > 0.0001);
+      }
+    });
+  }
+
   private playDamageFeedback(): void {
-    this.cloak.setFillStyle(COLORS.playerDamageFlash);
+    if (this.sprite) {
+      this.sprite.setTintFill(COLORS.playerDamageFlash);
+    } else if (this.cloak) {
+      this.cloak.setFillStyle(COLORS.playerDamageFlash);
+    }
     if (this.quality.screenShakeEnabled) {
       this.scene.cameras.main.shake(120, 0.004 * this.quality.screenShakeIntensityScale);
     }
@@ -298,7 +366,12 @@ export class Player extends Phaser.GameObjects.Container {
     });
 
     this.scene.time.delayedCall(DAMAGE_FLASH_MS, () => {
-      if (!this.dead) {
+      if (this.dead) {
+        return;
+      }
+      if (this.sprite) {
+        this.sprite.clearTint();
+      } else if (this.cloak) {
         this.cloak.setFillStyle(COLORS.player);
       }
     });
@@ -307,9 +380,13 @@ export class Player extends Phaser.GameObjects.Container {
   private die(): void {
     this.dead = true;
     this.velocity.set(0, 0);
-    this.cloak.setFillStyle(COLORS.playerDead);
-    this.eyeLeft.setAlpha(0.15);
-    this.eyeRight.setAlpha(0.15);
+    if (this.sprite) {
+      this.sprite.setTintFill(COLORS.playerDead);
+    } else if (this.cloak) {
+      this.cloak.setFillStyle(COLORS.playerDead);
+    }
+    this.eyeLeft?.setAlpha(0.15);
+    this.eyeRight?.setAlpha(0.15);
     this.setAlpha(0.6);
     this.scene.tweens.killTweensOf(this.visualGroup);
     this.audio.play("playerDeath");
