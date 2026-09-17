@@ -41,15 +41,18 @@ function definePlayerAnimations(scene: Phaser.Scene): void {
   }
 }
 
-const ENEMY_TYPES = ["walker", "fast", "tank", "boss", "finalBoss"] as const;
+const ENEMY_TYPES = ["walker", "fast", "tank", "ranged", "boss", "finalBoss"] as const;
 
 // Each enemy type ships as a single sheet (see AssetConfig.ts) sliced
 // into 4 consecutive state ranges, rather than 4 separate sheets per
-// type. These frame ranges are structural placeholders — there's no
-// real art yet to measure an actual layout from (see PROJECT_AUDIT.md's
-// zero-asset design decisions) — and are inert today since none of
-// these sheets load successfully; update the ranges once real sheets
-// define the actual grid.
+// type: idle(4) + move(6) + hit(2) + death(4) = 16 frames, exactly the
+// layout every real composited sheet above now packs itself into ("hit"
+// reuses two frames from that character's own idle/move set where no
+// dedicated reaction frame exists; "death" reuses a shared fire-burst FX
+// sequence from the source pack, not a bespoke per-character death).
+// "leaper"/"exploder" have real art staged in public/assets/ too but
+// aren't wired in here yet — they're not part of SPRITE_SHEETS, so
+// nothing tries to load or animate them until that's done.
 const ENEMY_STATE_FRAMES: Record<"idle" | "move" | "hit" | "death", { start: number; end: number; frameRate: number; repeat: number }> = {
   idle: { start: 0, end: 3, frameRate: 6, repeat: -1 },
   move: { start: 4, end: 9, frameRate: 10, repeat: -1 },

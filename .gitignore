@@ -4,12 +4,6 @@ dist-ssr
 .netlify
 *.local
 
-# Temporary staging area for exploring third-party asset packs before
-# selecting/copying specific files into game/public/assets/ — holds raw
-# zip downloads and their extracted contents, never meant to be
-# committed (same reasoning as node_modules/dist above).
-game/assets-staging/
-
 .env
 .env.local
 .env.*.local

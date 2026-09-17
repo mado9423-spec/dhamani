@@ -13,23 +13,30 @@ export interface SpriteSheetDefinition {
   frameHeight: number;
 }
 
-// Placeholder frame dimensions — this project has never shipped real
-// sprite art (see PROJECT_AUDIT.md's zero-asset design decisions), so
-// there's nothing yet to measure real frame sizes from. 64x64 only
-// matters once a sheet actually loads and needs slicing into frames;
-// update these once real art defines the actual grid.
-const FRAME_SIZE = { frameWidth: 64, frameHeight: 64 };
-
+// Real art (GothicVania Church/Cemetery, public domain — see
+// game/assets-staging exploration): each sheet is a horizontal strip of
+// frames composited from the source packs' loose per-action PNGs, bottom-
+// center aligned within a per-character cell size (see the compositing
+// notes in PROGRESS.md-adjacent history — the source packs' own packed
+// atlases are non-uniform texture-packer output, not a plain grid, so a
+// fresh uniform strip was built instead of slicing those directly).
+// frameWidth/frameHeight below are that per-character cell size, not a
+// shared constant — every enemy sheet (walker/fast/ranged/tank/boss/
+// finalBoss) packs exactly 16 frames in ENEMY_STATE_FRAMES's idle(4) +
+// move(6) + hit(2) + death(4) order (see AnimationConfig.ts); player
+// sheets are natural-length strips (createAnimFromWholeSheet uses every
+// frame, no fixed count).
 export const SPRITE_SHEETS: SpriteSheetDefinition[] = [
-  { key: "player_idle", path: "assets/player_idle.png", ...FRAME_SIZE },
-  { key: "player_run", path: "assets/player_run.png", ...FRAME_SIZE },
-  { key: "player_attack", path: "assets/player_attack.png", ...FRAME_SIZE },
-  { key: "walker", path: "assets/walker.png", ...FRAME_SIZE },
-  { key: "fast", path: "assets/fast.png", ...FRAME_SIZE },
-  { key: "tank", path: "assets/tank.png", ...FRAME_SIZE },
-  { key: "boss", path: "assets/boss.png", ...FRAME_SIZE },
-  { key: "finalBoss", path: "assets/finalBoss.png", ...FRAME_SIZE },
-  { key: "weapon_bolt", path: "assets/weapon_bolt.png", ...FRAME_SIZE },
+  { key: "player_idle", path: "assets/player_idle.png", frameWidth: 82, frameHeight: 60 }, // Monk, 4 frames
+  { key: "player_run", path: "assets/player_run.png", frameWidth: 82, frameHeight: 60 }, // Monk, 6 frames
+  { key: "player_attack", path: "assets/player_attack.png", frameWidth: 82, frameHeight: 60 }, // Monk, 6 frames
+  { key: "walker", path: "assets/walker.png", frameWidth: 81, frameHeight: 66 }, // Burning Ghoul
+  { key: "fast", path: "assets/fast.png", frameWidth: 122, frameHeight: 117 }, // Angel
+  { key: "ranged", path: "assets/ranged.png", frameWidth: 81, frameHeight: 66 }, // Skeleton Wizard
+  { key: "tank", path: "assets/tank.png", frameWidth: 44, frameHeight: 52 }, // Cemetery skeleton-clothed
+  { key: "boss", path: "assets/boss.png", frameWidth: 122, frameHeight: 117 }, // Angel (reused, visually biggest)
+  { key: "finalBoss", path: "assets/finalBoss.png", frameWidth: 122, frameHeight: 117 }, // Angel (reused)
+  { key: "weapon_bolt", path: "assets/weapon_bolt.png", frameWidth: 26, frameHeight: 26 }, // church fireball FX
 ];
 
 // Same registry-flag pattern as SPRITE_ASSETS_REGISTRY_KEY above, for the
