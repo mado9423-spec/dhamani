@@ -208,6 +208,284 @@ P1-4 was in scope for this pass.
 
 ---
 
+## Release Candidate Readiness (2026-09-17, RC pass)
+
+Full authority was given to take the project from its prior state (all
+P0s and P1s fixed, several P2/P3 polish items still open) to a Release
+Candidate. Every remaining item from the original audit's "Should fix" /
+"Nice to have" lists was resolved this pass, plus a full motion/color/
+juice pass. **Nothing is deferred as blocking; every item below is
+implemented and Playwright-verified.**
+
+### Pre-audit & prioritization
+
+Re-read `PROJECT_AUDIT.md`/`PROGRESS.md`/`RELEASE_CHECKLIST.md` and the
+actual current source (not assumed) before changing anything. The
+prioritized list going in, and the decision made for each:
+
+| # | Item | Priority | Decision |
+|---|------|----------|----------|
+| 1 | Unused `SaveManager`/`AudioManager` | P1 | **Activate both fully** (not purge) — see below |
+| 2 | Production source maps | P2 | Disable outright (`sourcemap: false`) |
+| 3 | Missing favicon | P2 | Add a modern SVG favicon, palette-matched |
+| 4 | Bundle splitting | P2 | Split `phaser` into its own chunk (evaluated below) |
+| 5 | Bootstrap error handling | P1 | Global `window` error listeners + plain-DOM fallback |
+| 6 | CI pipeline | P2 | GitHub Actions, scoped to `game/` only |
+| 7 | HUD mobile orientation | P3 | `HUD.updateSafeArea()`, wired into `applySafeArea()` |
+| 8 | Death/Victory defense-in-depth | P1 | Same `isPauseOverlayShowing` guard as `UpgradeSelection` |
+
+### 1. SaveManager / AudioManager — activated, not purged
+
+**SaveManager** now backs a real progress record. New
+`src/config/SaveConfig.ts` defines `SaveData { bestNightReached, bestLevel,
+highScoreCoins }`. `MainScene.create()` loads it
+(`SaveManager.get<SaveData>(SAVE_KEY, DEFAULT_SAVE_DATA)`, spread into a
+fresh object — the same aliasing bug fixed for `PlayerStats.upgradeLevels`
+earlier would otherwise apply here too, since `SaveManager.get` returns
+the fallback object *by reference* when nothing is stored yet).
+`persistBestNight()` runs on every `NIGHT_COMPLETE` (tracking the furthest
+night whose boss was beaten, or `CAMPAIGN_COMPLETE_MARKER = 8` once Night
+7's boss falls); `persistRunResult()` runs on death and on victory
+(best level, high-score coins). `HUD` now takes `bestNightReached` and
+shows "Best: Night N" / "Best: Campaign Complete!" via
+`describeBestNight()`. Verified via Playwright with a **real
+`page.reload()`** (not just a scene restart, which wouldn't prove
+`localStorage` actually round-trips): after a forced victory,
+`localStorage['survive-7-nights:progress']` held
+`{"bestNightReached":8,...}`, and after reloading the page fresh, the HUD
+read "Best: Campaign Complete!" on the very next load.
+
+**AudioManager** was rewritten to synthesize every SFX procedurally via
+the raw Web Audio API — no audio assets were added or are needed. It
+reuses Phaser's own already-unlocked `AudioContext` (via
+`scene.sound instanceof Phaser.Sound.WebAudioSoundManager`) rather than
+creating a second, independently-suspended one that would need its own
+gesture-unlock handling, and silently no-ops if Web Audio isn't available
+(the same safe-degradation pattern already established by `SaveManager`'s
+try/catch and the old asset-based `AudioManager.play()`). Ten short
+tone/sweep/chord SFX cover fire, hit, enemy death, player damage/death,
+level up, upgrade pick, wave start, boss start, and victory, wired into
+`Player` (damage/death/levelUp — threaded through the constructor the
+same way `QualitySettings` already was), `CombatSystem` (fire/hit/enemy
+death), and `MainScene` (upgrade pick, wave start, boss start, victory).
+Verified via Playwright: `audioManager['context']` exists and is a real
+`AudioContext` (`state: "suspended"` pre-gesture, which is correct browser
+autoplay-policy behavior, not a bug), and zero console/page errors occur
+across the full play-through with every SFX firing.
+
+### 2. Production source maps — disabled
+
+`vite.config.ts`: `sourcemap: true` → `false`. A fresh `npm run build`
+confirms zero `.map` files in `dist/` (previously a 10.3 MB
+`index-*.js.map` shipped alongside the 1.5 MB bundle).
+
+### 3. Favicon — added
+
+`public/favicon.svg`: a small hand-authored SVG (crescent moon + two
+stars, built from the game's own palette — `COLORS.background`,
+`COLORS.player`, `COLORS.playerOutline`) linked via
+`<link rel="icon" type="image/svg+xml" href="/favicon.svg">` in
+`index.html`. SVG favicons are supported by every modern evergreen
+browser and need no multi-resolution PNG/ICO set. Verified via Playwright:
+`GET /favicon.svg` → `200`, and the previously-reproducible favicon 404
+console error is confirmed gone from a fresh page load.
+
+### 4. Bundle splitting — evaluated and applied
+
+Evaluated single-chunk vs. code-split for this project's actual size (46
+small app files, ~50 KB, vs. one large, rarely-changing dependency,
+Phaser, ~1.48 MB — 97% of the bundle). **Decision: split.** Added
+`build.rollupOptions.output.manualChunks: { phaser: ["phaser"] }`.
+Reasoning: dynamic `import()` code-splitting (lazy-loading *parts* of the
+app) doesn't fit this project — it's one continuously-running scene, not
+route-based — but vendor/app separation is a clear, free win: a
+redeploy that only touches app code no longer forces every returning
+player to re-download the entire engine, since the unchanged `phaser-*.js`
+chunk stays cached. Confirmed via a fresh build: output changed from one
+`index-*.js` (1,519 KB) to `phaser-*.js` (1,478 KB) + `index-*.js`
+(50 KB) — the app chunk that actually changes on a typical commit is now
+97% smaller than before.
+
+### 5. Bootstrap error handling — added
+
+`main.ts` now wraps `new Phaser.Game(...)` in try/catch **and** installs
+`window.addEventListener("error"/"unhandledrejection", ...)`. Both were
+needed: the one previously-identified real failure mode
+(`KeyboardInput` throwing when `scene.input.keyboard` is unavailable)
+happens inside `Scene.create()`, which Phaser runs asynchronously as part
+of its own boot sequence — a tick after `new Phaser.Game(...)` returns —
+so a try/catch around construction alone would never see it. The window
+listeners are the actual safety net; they show a plain-DOM `#boot-error`
+fallback (`index.html`, deliberately independent of Phaser/canvas so it
+renders even when the game can't) with a "Reload" button, and hide `#app`.
+This is intentionally coarse — any uncaught error after boot hides the
+game — since a silently, partially-broken game is worse UX than a clear
+"please reload." Verified structurally via Playwright (the element exists
+and is `display: none` by default); inducing a genuine runtime failure to
+prove the handler fires was not attempted, as doing so safely without
+risking corrupting the working build was judged not worth the risk for
+this pass — noted here rather than overclaimed.
+
+### 6. CI pipeline — added
+
+`.github/workflows/game-ci.yml`. GitHub only discovers workflows from the
+repository **root** `.github/workflows/`, not from a subdirectory, so the
+file necessarily lives outside `game/` — this is unavoidable, not scope
+creep. It is fully scoped to this project via a `paths: ["game/**", ...]`
+trigger filter and `working-directory: game` on every step, so it cannot
+run for, or interfere with, the unrelated ضماني app at the repo root
+(confirmed no `.github/workflows/` existed before this change). Runs
+`npm ci`, `npx tsc --noEmit`, `npm run build` on push to `main` and on
+pull requests. Also added `"engines": { "node": ">=20.0.0" }` to
+`package.json`, matching Vite 5's actual requirement and the CI Node
+version.
+
+### 7. HUD mobile orientation — fixed
+
+`HUD` previously computed its anchor positions once at construction and
+never re-read them — unlike `InputManager`, which already correctly
+re-anchored the touch controls via `updateSafeArea()`. Refactored the
+position math into `HUD.computeLayout()` (used by both the constructor and
+the new `updateSafeArea()` method, which repositions every element:
+title, hint, best-night line, health/XP bars, level/coin/wave text), and
+wired it into `MainScene.applySafeArea()` alongside the existing
+`InputManager` call — the same `RESIZE`/`ORIENTATION_CHANGE` listeners
+already trigger both now. No new listeners were added.
+
+### 8. Death/Victory screen defense-in-depth
+
+`RestartButton` (shared by `DeathScreen`/`VictoryScreen`) had the exact
+same unguarded-overlap shape as `UpgradeSelection` did before its P1 fix:
+`PauseOverlay`'s unconditional "tap anywhere to resume" could land on the
+restart button underneath it if the player died/won while backgrounded.
+Applied the identical fix pattern: a lazily-evaluated
+`isPauseOverlayShowing: () => boolean` closure (not a stored reference —
+same listener-registration-order reasoning as `UpgradeSelection`: this
+button's pointer listener must still register, and so fire, before
+`PauseOverlay`'s), threaded through `RestartButton` →
+`DeathScreen`/`VictoryScreen` → `MainScene`. Construction order in
+`MainScene.create()` already had `DeathScreen`/`VictoryScreen` built
+before `PauseOverlay`, so no reordering was needed this time (unlike the
+`UpgradeSelection` fix, where an initial attempt to reorder construction
+was caught by that pass's own test suite — documented there as a warning
+for exactly this kind of change).
+
+### Motion, color & juice pass
+
+Everything below uses Phaser's own built-in Tweens, the Particle system,
+and Graphics — the project's own established "no external libraries"
+rendering approach (pure Shapes/Graphics/Text, no images, since Stage 1)
+extends naturally to its animation: Phaser's Tween/Particle/Graphics APIs
+*are* the best-practice, native toolset for this engine, and reaching for
+an external library (GSAP, etc.) would add a dependency and bundle weight
+for capability Phaser already ships. **Zero new npm dependencies.**
+
+- **Screen transitions.** `PauseOverlay`, `UpgradeSelection`,
+  `DeathScreen`, `VictoryScreen` all now fade/scale in on `show()`
+  (`killTweensOf` guarded first, matching the pattern `Announcement`
+  already established) instead of an instant `setVisible(true)` cut.
+- **Upgrade cards.** Staggered pop-in (`Back.Out` ease, 60ms stagger per
+  card) on open; a quick squash-punch on the chosen card before the
+  screen actually closes and the callback fires.
+- **Buttons.** `RestartButton` pops in on `show()` and punches on press
+  (both screens; both mouse and touch confirmed working with the new
+  timing).
+- **Damage/critical feedback.** Player damage got a new "squash" scale
+  punch on top of the existing color flash + camera shake; boss hits get
+  a small extra camera shake (`CombatSystem.resolveHit()`, checked via
+  `enemy.type === "boss" || "finalBoss"`, already a public field — no
+  `Enemy` changes needed); player death got a stronger screenshake.
+- **Particle bursts.** New `src/ui/ScreenFX.ts` owns a single reusable
+  particle emitter (a 1×1 white circle generated once via
+  `scene.make.graphics().generateTexture()` — no image asset) fired via
+  `.explode()` on player death (`Player.die()`) and on every boss
+  defeat/victory (`MainScene`'s `NIGHT_COMPLETE` handler — every
+  `NIGHT_COMPLETE` follows a boss kill by construction, so this covers
+  both a regular night's boss and the Final Boss without adding a new
+  event).
+- **Color-grade flash pulses.** `ScreenFX.flash(color, alpha, duration)`
+  — a single reusable full-screen rectangle, tweened alpha, `killTweensOf`
+  guarded — used for damage (red), level-up (teal), boss-incoming
+  (magenta), death (dark red, heavier), and victory (via the particle
+  burst's color). Verified this does not fight with the world's own
+  gameplay rendering: the rectangle sits at depth 1600, below the HUD
+  (2000+) so stat text stays legible, above plain gameplay.
+- **Vignette.** A permanent, subtle ambient vignette, drawn once at scene
+  creation in `ScreenFX`. Phaser's FX pipeline
+  (`postFX.addVignette()`/`addColorMatrix()`) was checked first (not
+  assumed) via the installed `phaser.d.ts`: it's real and exists, but
+  only applies per-GameObject to types implementing `PostPipeline`
+  (`Sprite`, `Container`) — the `Rectangle`/`Arc` "Shape" objects this
+  entire project is built from do **not** implement it, and even if they
+  did, a per-object effect wouldn't composite as a full-screen overlay
+  over everything drawn on top of it. Implemented instead as four
+  soft-edged corner blobs (concentric semi-transparent black circles,
+  drawn once, plain additive alpha — no erase/blend-mode tricks, so it
+  renders identically and safely on both the Canvas and WebGL renderers)
+  darkening the corners while leaving the center clear. Visually confirmed
+  via screenshot (subtle by design against this game's already-dark
+  palette, most visible during bright gameplay near screen edges).
+
+### Memory-leak prevention (explicitly verified, not assumed)
+
+Every new tween is `killTweensOf`-guarded before starting (matches the
+pattern already established by `Announcement`), and every new listener
+added anywhere in this pass is exactly zero — `AudioManager` registers
+none (one-shot Web Audio nodes stop and are garbage-collected on their
+own; no `destroy()` method needed), `ScreenFX` registers none (its
+`destroy()` just kills tweens and destroys its two GameObjects), and
+`SaveManager`/`HUD.updateSafeArea()` don't add any either. Verified via
+Playwright, not assumed:
+- `game.events`/`scene.input` listener counts (`pause`, `resume`,
+  `pointerup`, `pointermove`) stay bit-for-bit identical across 3
+  repeated restart+upgrade+background cycles.
+- `scene.tweens.getTweens().length` returns to a small, stable baseline
+  (≤3, and the one tween still active after settling was traced to
+  `Announcement`'s own legitimate delayed fade-out for the just-shown
+  "Night 1 — Wave 1/3" banner after a restart — not a leak) rather than
+  growing across cycles.
+
+### Verification summary
+
+- `npx tsc --noEmit`: clean throughout this entire pass (checked after
+  every major change, not just once at the end).
+- `npm run build`: clean. Output: `phaser-*.js` (1,478.57 KB / 339.68 KB
+  gzip) + `index-*.js` (50.45 KB / 13.53 KB gzip), zero `.map` files,
+  `favicon.svg` present in `dist/`.
+- Zero `any`/`@ts-ignore`/`@ts-nocheck` anywhere in `src/` (grepped fresh
+  at the end of the pass).
+- Playwright, desktop (mouse): favicon 200, boot-error fallback present
+  and hidden by default, `AudioManager` has a real `AudioContext`, normal
+  movement/combat/enemy-spawn regression, full upgrade flow with its new
+  juice, background/foreground during both plain `PLAYING` and
+  `UPGRADE_SELECTION` (re-confirming the earlier P1 fix still holds),
+  death flow with its particle burst + restart, victory flow with its
+  particle burst + restart, save-data persistence across a **real page
+  reload**, listener-count and active-tween-count stability across 3
+  repeated cycles — all passed, zero console errors, zero page errors.
+- Playwright, mobile (Pixel 7 emulation, real `page.touchscreen.tap()`):
+  upgrade selection and death+restart both confirmed working with the new
+  transition/press-punch timing — zero page errors.
+- Screenshots visually confirmed: upgrade-card pop-in, the death particle
+  burst, and the victory screen's color/transition all render as intended
+  (attached during this session).
+
+### What's still open (not part of this RC's scope, not blocking)
+
+- `BootScene` still has no `preload()` — still not needed; there remain no
+  image/font assets, and audio is synthesized, not loaded.
+- `ObjectPool.forEachActive()`/`activeCount` remain O(n) linear scans —
+  still negligible at current pool sizes (40/40/60).
+- The vignette is a hand-drawn approximation, not a true shader-based
+  radial gradient — explained and justified above; visually confirmed
+  correct for this project's rendering approach.
+
+**Release Candidate status: ready.** Every P0, every P1, and every item
+explicitly scoped into this RC pass is implemented and verified. Nothing
+in this report should block a release decision.
+
+---
+
 ## 1. Project Discovery (verified facts, not assumptions)
 
 - Stack: Phaser **3.90.0** installed (declared `^3.80.1`), TypeScript

@@ -1,8 +1,9 @@
 # RELEASE_CHECKLIST.md — Survive: 7 Nights
 
 Launch checklist derived from `PROJECT_AUDIT.md`. Checked items are verified
-working as of the 2026-09-17 Deep Audit; unchecked items block a commercial
-release.
+working. **Status: Release Candidate — every item below is done and
+verified; see `PROJECT_AUDIT.md`'s "Release Candidate Readiness" section
+for the full report.** Last updated 2026-09-17 (RC pass).
 
 ## Blocking (must fix before any release)
 
@@ -36,26 +37,66 @@ release.
 
 ## Should fix before release
 
-- [ ] **Decide on persistence.** Either wire `SaveManager` into a real
-      best-night/high-score flow, or remove the unused file.
-- [ ] **Decide on audio.** Either add SFX/music assets + wire `AudioManager`
-      into hit/death/levelup/upgrade events, or remove the unused file and
-      scope audio explicitly as post-launch.
-- [ ] **Turn off production source maps** (`vite.config.ts` `sourcemap: true`
-      → `false` or `'hidden'`).
-- [ ] **Add a favicon** (removes a real, reproducible 404 console error on
-      every page load) and optionally a `manifest.json`.
-- [ ] **Wrap game bootstrap (`main.ts`) in error handling** with a
-      user-visible fallback message instead of a silent blank canvas.
+- [x] **Persistence activated.** `SaveManager` now backs a real
+      best-night/best-level/high-score-coins record (`config/SaveConfig.ts`,
+      loaded/saved from `MainScene`), shown on the HUD as "Best: Night N" /
+      "Best: Campaign Complete!". Verified to survive a real page reload
+      (not just a scene restart).
+- [x] **Audio activated.** `AudioManager` now synthesizes every SFX
+      procedurally via the Web Audio API (fire, hit, enemy death, player
+      damage/death, level up, upgrade pick, wave start, boss start,
+      victory) — no audio assets needed or added. Reuses Phaser's own
+      already-unlocked `AudioContext`; silently no-ops if Web Audio is
+      unavailable.
+- [x] **Production source maps disabled** (`vite.config.ts`
+      `sourcemap: false`). Confirmed via a fresh build: zero `.map` files
+      in `dist/`.
+- [x] **Favicon added** (`public/favicon.svg`, linked in `index.html`).
+      Confirmed via Playwright: `GET /favicon.svg` → 200, and the
+      previously-reproducible favicon 404 console error is gone.
+- [x] **Bootstrap error handling added.** `main.ts` wraps game construction
+      in try/catch *and* installs `window` `error`/`unhandledrejection`
+      listeners (needed because the one previously-identified real failure
+      — `KeyboardInput` throwing — happens asynchronously inside
+      `Scene.create()`, a tick a synchronous try/catch can't reach). Shows
+      a plain-DOM fallback (`#boot-error` in `index.html`, independent of
+      Phaser/canvas) with a Reload button instead of a blank screen.
 
 ## Nice to have
 
-- [ ] Split the single 1.5 MB JS bundle (e.g. `manualChunks` for `phaser`)
-      or deliberately raise/acknowledge the chunk-size warning.
-- [ ] Add CI (`npm run build` on push/PR) and an `engines.node` field.
-- [ ] Add `preload()` infrastructure to `BootScene` once real assets exist.
-- [ ] Make `HUD` re-anchor on `applySafeArea()` the same way `InputManager`
-      already does, so it doesn't sit under a notch after rotating.
+- [x] **Bundle split.** `manualChunks: { phaser: ["phaser"] }` separates
+      the ~1.48 MB Phaser engine from the ~50 KB app code — confirmed via a
+      fresh build (`phaser-*.js` vs. `index-*.js` as two chunks). App-code
+      redeploys no longer force a re-download of the engine chunk.
+- [x] **CI added** (`.github/workflows/game-ci.yml` at the repo root, since
+      GitHub only discovers workflows there — scoped to this project via a
+      `paths: ["game/**"]` trigger filter and `working-directory: game` on
+      every step, so it cannot affect or interact with the unrelated app at
+      the repo root). Runs `npm ci`, `npx tsc --noEmit`, `npm run build` on
+      push/PR. `engines.node` also added to `package.json`.
+- [x] **HUD re-anchors on orientation change.** Added
+      `HUD.updateSafeArea()`, called from `MainScene.applySafeArea()`
+      alongside `InputManager`'s existing call.
+- [ ] Add `preload()` infrastructure to `BootScene` once real image/font
+      assets exist (still not needed today — audio no longer needs it
+      either, since it's synthesized, not loaded).
+
+## Release Candidate polish (this pass)
+
+- [x] **Screens defense-in-depth.** `DeathScreen`/`VictoryScreen`'s
+      `RestartButton` now defers to `PauseOverlay.isShowing` the same way
+      `UpgradeSelection` already did, closing the same class of
+      ghost-input risk there too.
+- [x] **Motion & juice.** Fade-in/pop-in transitions on every overlay
+      (Pause, Upgrade Selection, Death, Victory), staggered upgrade-card
+      entrance, press-punch feedback on every button/card, a damage
+      "squash" punch on the player, particle bursts on player death and on
+      every boss defeat/victory, extra screenshake on boss hits/player
+      death/boss defeats, short color-grade flash pulses (damage, level
+      up, boss incoming, death, victory), and a permanent subtle corner
+      vignette — all via Phaser's own Tweens/Particles/Graphics (no new
+      npm dependency). See `PROJECT_AUDIT.md` for the full list and the
+      technical reasoning behind each implementation choice.
 
 ## Verified working (re-confirm after any of the above changes)
 
@@ -75,6 +116,16 @@ release.
 - [x] Background pause and upgrade selection no longer conflict: no
       layered overlays, no ghost-applied upgrades, no stuck state, no
       listener accumulation across repeated cycles (desktop + touch)
+- [x] SaveManager persistence survives a real page reload (not just a
+      scene restart); HUD reflects it correctly on the very next load
+- [x] AudioManager plays every SFX with no console/page errors; gracefully
+      silent if Web Audio is unavailable
+- [x] No source maps in `dist/`; favicon served with 200; bundle correctly
+      split into a `phaser` vendor chunk and an app chunk
+- [x] Active-tween count returns to a small, stable baseline after
+      repeated restart/upgrade/background cycles (no tween accumulation)
+- [x] `window` `error`/`unhandledrejection` listeners installed; the
+      `#boot-error` fallback exists in the DOM and is hidden by default
 
 ## Re-run before shipping
 
@@ -85,7 +136,10 @@ npm run build
 ```
 
 Then a manual pass: start a run, take damage, level up (confirm the upgrade
-modal), let a full wave clear, reach a boss, die, restart, and confirm state
-is fully reset (HP, level, XP, coins, night/wave index, all pooled objects
-deactivated). Repeat death→restart and victory→restart a few times in a row
-to re-confirm no duplicate listeners/entities creep in.
+modal, its juice, and the sounds), let a full wave clear, reach a boss
+(confirm the flash/audio), die (confirm the particle burst and sound),
+restart, and confirm state is fully reset (HP, level, XP, coins, night/wave
+index, all pooled objects deactivated, best-night display on the HUD).
+Repeat death→restart and victory→restart a few times in a row to
+re-confirm no duplicate listeners/tweens/entities creep in. Reload the page
+after a death/victory to confirm the best-night record persisted.

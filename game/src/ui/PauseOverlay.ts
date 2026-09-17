@@ -57,6 +57,13 @@ export class PauseOverlay {
     this.overlay.setVisible(true);
     this.title.setVisible(true);
     this.subtitle.setVisible(true);
+
+    this.scene.tweens.killTweensOf([this.overlay, this.title, this.subtitle]);
+    this.overlay.setAlpha(0);
+    this.title.setAlpha(0);
+    this.subtitle.setAlpha(0);
+    this.scene.tweens.add({ targets: this.overlay, alpha: 0.8, duration: 200 });
+    this.scene.tweens.add({ targets: [this.title, this.subtitle], alpha: 1, duration: 240, delay: 60 });
   }
 
   get isShowing(): boolean {
@@ -65,6 +72,7 @@ export class PauseOverlay {
 
   destroy(): void {
     this.scene.input.off(Phaser.Input.Events.POINTER_UP, this.handlePointerUp, this);
+    this.scene.tweens.killTweensOf([this.overlay, this.title, this.subtitle]);
     this.overlay.destroy();
     this.title.destroy();
     this.subtitle.destroy();
@@ -77,6 +85,7 @@ export class PauseOverlay {
 
     const callback = this.onResume;
     this.onResume = null;
+    this.scene.tweens.killTweensOf([this.overlay, this.title, this.subtitle]);
     this.overlay.setVisible(false);
     this.title.setVisible(false);
     this.subtitle.setVisible(false);

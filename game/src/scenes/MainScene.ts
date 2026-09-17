@@ -1,10 +1,13 @@
 import Phaser from "phaser";
-import { GAME_HEIGHT, GAME_WIDTH, WORLD_HEIGHT, WORLD_WIDTH } from "../config/GameConfig";
-import { QUALITY_PRESETS, QUALITY_REGISTRY_KEY, QualityLevel } from "../config/QualityConfig";
+import { AudioManager } from "../audio/AudioManager";
+import { GAME_HEIGHT, GAME_WIDTH, WORLD_HEIGHT, WORLD_WIDTH, COLORS } from "../config/GameConfig";
+import { QUALITY_PRESETS, QUALITY_REGISTRY_KEY, QualityLevel, QualitySettings } from "../config/QualityConfig";
+import { CAMPAIGN_COMPLETE_MARKER, DEFAULT_SAVE_DATA, SAVE_KEY, SaveData } from "../config/SaveConfig";
 import { MAX_UPGRADE_LEVEL, UPGRADE_POOL, UpgradeDefinition } from "../config/UpgradeConfig";
 import { Background } from "../entities/Background";
 import { Player, PlayerEvents } from "../entities/Player";
 import { InputManager } from "../input/InputManager";
+import { SaveManager } from "../storage/SaveManager";
 import { CombatSystem } from "../systems/CombatSystem";
 import { EnemyManager } from "../systems/EnemyManager";
 import {
@@ -20,6 +23,7 @@ import { BossHealthBar } from "../ui/BossHealthBar";
 import { DeathScreen } from "../ui/DeathScreen";
 import { HUD } from "../ui/HUD";
 import { PauseOverlay } from "../ui/PauseOverlay";
+import { ScreenFX } from "../ui/ScreenFX";
 import { UpgradeSelection } from "../ui/UpgradeSelection";
 import { VictoryScreen } from "../ui/VictoryScreen";
 import { readSafeAreaInsetsPx, safeAreaInsetsToGameSpace, SafeAreaInsets } from "../utils/SafeArea";
@@ -39,6 +43,10 @@ export class MainScene extends Phaser.Scene {
   private upgradeSelection!: UpgradeSelection;
   private victoryScreen!: VictoryScreen;
   private pauseOverlay!: PauseOverlay;
+  private audioManager!: AudioManager;
+  private screenFx!: ScreenFX;
+  private quality!: QualitySettings;
+  private saveData: SaveData = { ...DEFAULT_SAVE_DATA };
   private readonly worldBounds = new Phaser.Geom.Rectangle(0, 0, WORLD_WIDTH, WORLD_HEIGHT);
   // Two independent pause flags: upgrade-selection pausing must not be
   // clearable by tapping the "resume from background" overlay, and
@@ -50,7 +58,10 @@ export class MainScene extends Phaser.Scene {
   // Class-field arrow functions so the exact same reference can be
   // passed to both .on() and .off() — an inline arrow at each call
   // site can't be unsubscribed later.
-  private readonly handlePlayerDied = (): void => this.deathScreen.show(() => this.scene.restart());
+  private readonly handlePlayerDied = (): void => {
+    this.persistRunResult();
+    this.deathScreen.show(() => this.scene.restart());
+  };
   private readonly handlePlayerLevelUp = (): void => this.queueUpgradeChoice();
   private readonly handleGamePause = (): void => this.showBackgroundPause();
   private readonly handleGameResume = (): void => this.showBackgroundPause();
@@ -63,25 +74,31 @@ export class MainScene extends Phaser.Scene {
   create(): void {
     const qualityLevel = (this.registry.get(QUALITY_REGISTRY_KEY) as QualityLevel | undefined) ?? "medium";
     const quality = QUALITY_PRESETS[qualityLevel];
+    this.quality = quality;
     const safeAreaInsets = this.currentSafeAreaInsets();
+    this.saveData = { ...SaveManager.get<SaveData>(SAVE_KEY, DEFAULT_SAVE_DATA) };
+
+    this.audioManager = new AudioManager(this);
+    this.screenFx = new ScreenFX(this);
 
     new Background(this, WORLD_WIDTH, WORLD_HEIGHT);
 
-    this.player = new Player(this, WORLD_WIDTH / 2, WORLD_HEIGHT / 2, quality);
+    this.player = new Player(this, WORLD_WIDTH / 2, WORLD_HEIGHT / 2, quality, this.audioManager, this.screenFx);
     this.inputManager = new InputManager(this, safeAreaInsets);
-    this.hud = new HUD(this, this.player, safeAreaInsets);
-    this.deathScreen = new DeathScreen(this, GAME_WIDTH, GAME_HEIGHT);
+    this.hud = new HUD(this, this.player, safeAreaInsets, this.saveData.bestNightReached);
+    // DeathScreen/VictoryScreen/UpgradeSelection must all be constructed
+    // (and so register their pointer listeners) before PauseOverlay — see
+    // UpgradeSelection's own doc comment for why the ordering matters,
+    // not just holding a reference.
+    this.deathScreen = new DeathScreen(this, GAME_WIDTH, GAME_HEIGHT, () => this.pauseOverlay.isShowing);
     this.announcement = new Announcement(this);
     this.bossHealthBar = new BossHealthBar(this);
-    // UpgradeSelection must be constructed (and so register its pointer
-    // listener) before PauseOverlay — see UpgradeSelection's own doc
-    // comment for why the ordering matters, not just the reference.
     this.upgradeSelection = new UpgradeSelection(this, () => this.pauseOverlay.isShowing);
-    this.victoryScreen = new VictoryScreen(this, GAME_WIDTH, GAME_HEIGHT);
+    this.victoryScreen = new VictoryScreen(this, GAME_WIDTH, GAME_HEIGHT, this.screenFx, () => this.pauseOverlay.isShowing);
     this.pauseOverlay = new PauseOverlay(this);
 
     this.enemyManager = new EnemyManager(this);
-    this.combatSystem = new CombatSystem(this, this.enemyManager, quality);
+    this.combatSystem = new CombatSystem(this, this.enemyManager, quality, this.audioManager);
     this.nightManager = new NightManager(this.enemyManager);
     this.wireNightEvents();
     this.nightManager.start();
@@ -120,6 +137,7 @@ export class MainScene extends Phaser.Scene {
       this.victoryScreen.destroy();
       this.pauseOverlay.destroy();
       this.inputManager.destroy();
+      this.screenFx.destroy();
     });
   }
 
@@ -148,7 +166,9 @@ export class MainScene extends Phaser.Scene {
   }
 
   private applySafeArea(): void {
-    this.inputManager.updateSafeArea(this.currentSafeAreaInsets());
+    const insets = this.currentSafeAreaInsets();
+    this.inputManager.updateSafeArea(insets);
+    this.hud.updateSafeArea(insets);
   }
 
   private showBackgroundPause(): void {
@@ -199,14 +219,29 @@ export class MainScene extends Phaser.Scene {
 
   private onUpgradeChosen(upgrade: UpgradeDefinition): void {
     this.player.applyUpgrade(upgrade);
+    this.audioManager.play("upgradePick");
     this.paused = false;
     this.tryShowNextUpgrade();
+  }
+
+  /** Persists the best level/coins reached this run — called on death and on victory. */
+  private persistRunResult(): void {
+    this.saveData.bestLevel = Math.max(this.saveData.bestLevel, this.player.level);
+    this.saveData.highScoreCoins = Math.max(this.saveData.highScoreCoins, this.player.coins);
+    SaveManager.set(SAVE_KEY, this.saveData);
+  }
+
+  private persistBestNight(nightNumber: number, isFinalNight: boolean): void {
+    const reached = isFinalNight ? CAMPAIGN_COMPLETE_MARKER : nightNumber;
+    this.saveData.bestNightReached = Math.max(this.saveData.bestNightReached, reached);
+    SaveManager.set(SAVE_KEY, this.saveData);
   }
 
   private wireNightEvents(): void {
     this.nightManager.on(NightManagerEvents.WAVE_INTRO, ({ nightNumber, waveNumber, totalWaves }: WaveIntroPayload) => {
       this.announcement.show(`Night ${nightNumber} — Wave ${waveNumber}/${totalWaves}`);
       this.hud.setWaveStatus(`Night ${nightNumber} · Wave ${waveNumber}/${totalWaves}`);
+      this.audioManager.play("waveStart");
     });
 
     this.nightManager.on(NightManagerEvents.BOSS_INTRO, ({ nightNumber, isFinalNight }: BossIntroPayload) => {
@@ -217,18 +252,37 @@ export class MainScene extends Phaser.Scene {
     this.nightManager.on(NightManagerEvents.BOSS_START, ({ nightNumber, isFinalNight }: BossStartPayload) => {
       this.hud.setWaveStatus(`Night ${nightNumber} · ${isFinalNight ? "FINAL BOSS" : "BOSS"}`);
       this.bossHealthBar.show(isFinalNight);
+      this.audioManager.play("bossStart");
+      this.screenFx.flash(COLORS.bossHealthFill, 0.18, 350);
     });
 
     this.nightManager.on(NightManagerEvents.NIGHT_COMPLETE, ({ nightNumber, isFinalNight }: NightCompletePayload) => {
       this.bossHealthBar.hide();
+      this.persistBestNight(nightNumber, isFinalNight);
+
+      // Every NIGHT_COMPLETE follows a boss kill — celebrate it at the
+      // player's position (the boss is always close by at that moment),
+      // converted from world space to screen space since the burst is a
+      // scroll-factor-0 emitter.
+      this.screenFx.burst(
+        this.player.x - this.cameras.main.worldView.x,
+        this.player.y - this.cameras.main.worldView.y,
+        COLORS.bossHealthFill
+      );
+      if (this.quality.screenShakeEnabled) {
+        this.cameras.main.shake(200, 0.006 * this.quality.screenShakeIntensityScale);
+      }
 
       if (isFinalNight) {
+        this.persistRunResult();
+        this.audioManager.play("victory");
         this.announcement.show("Victory!");
         this.hud.setWaveStatus("Campaign Complete · Victory!");
         this.victoryScreen.show(() => this.scene.restart());
         return;
       }
 
+      this.audioManager.play("levelUp");
       this.announcement.show(`Night ${nightNumber} Complete!`);
       this.hud.setWaveStatus(`Night ${nightNumber} · Complete`);
     });

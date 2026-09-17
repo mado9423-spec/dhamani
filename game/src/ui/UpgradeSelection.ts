@@ -77,12 +77,21 @@ export class UpgradeSelection {
     this.overlay.setVisible(true);
     this.title.setVisible(true);
     this.scene.input.setDefaultCursor("pointer");
+
+    this.scene.tweens.killTweensOf([this.overlay, this.title]);
+    this.overlay.setAlpha(0);
+    this.title.setAlpha(0);
+    this.title.setScale(0.85);
+    this.scene.tweens.add({ targets: this.overlay, alpha: 0.75, duration: 220 });
+    this.scene.tweens.add({ targets: this.title, alpha: 1, scale: 1, duration: 280, ease: "Back.Out" });
+
     this.buildCards(options);
   }
 
   destroy(): void {
     this.scene.input.off(Phaser.Input.Events.POINTER_MOVE, this.handlePointerMove, this);
     this.scene.input.off(Phaser.Input.Events.POINTER_UP, this.handlePointerUp, this);
+    this.scene.tweens.killTweensOf([this.overlay, this.title]);
     this.clearCards();
     this.overlay.destroy();
     this.title.destroy();
@@ -97,11 +106,11 @@ export class UpgradeSelection {
 
     options.forEach((upgrade, index) => {
       const x = startX + index * (CARD_WIDTH + CARD_GAP);
-      this.cards.push(this.createCard(x, y, upgrade));
+      this.cards.push(this.createCard(x, y, upgrade, index));
     });
   }
 
-  private createCard(x: number, y: number, upgrade: UpgradeDefinition): CardEntry {
+  private createCard(x: number, y: number, upgrade: UpgradeDefinition, index: number): CardEntry {
     const container = this.scene.add.container(x, y).setScrollFactor(0).setDepth(4001);
 
     const background = this.scene.add
@@ -121,6 +130,19 @@ export class UpgradeSelection {
       .setOrigin(0.5);
 
     container.add([background, icon, label]);
+
+    // Staggered pop-in per card so the three choices read as a deliberate
+    // sequence rather than popping in all at once.
+    container.setScale(0.7);
+    container.setAlpha(0);
+    this.scene.tweens.add({
+      targets: container,
+      scale: 1,
+      alpha: 1,
+      duration: 260,
+      delay: index * 60,
+      ease: "Back.Out",
+    });
 
     const bounds = new Phaser.Geom.Rectangle(x - CARD_WIDTH / 2, y - CARD_HEIGHT / 2, CARD_WIDTH, CARD_HEIGHT);
     return { container, background, bounds, upgrade };
@@ -148,7 +170,7 @@ export class UpgradeSelection {
 
     const hit = this.findCardAt(pointer.x, pointer.y);
     if (hit) {
-      this.choose(hit.upgrade);
+      this.choose(hit);
     }
   }
 
@@ -156,24 +178,38 @@ export class UpgradeSelection {
     return this.cards.find((card) => Phaser.Geom.Rectangle.Contains(card.bounds, x, y)) ?? null;
   }
 
-  private choose(upgrade: UpgradeDefinition): void {
-    const callback = this.onChoose;
-    this.hide();
-    callback?.(upgrade);
-  }
-
-  private hide(): void {
+  private choose(card: CardEntry): void {
+    // Block further input immediately (synchronously) even though the
+    // visible hide/cleanup is deferred a beat for the press-punch below.
     this.active = false;
     this.hoveredCard = null;
-    this.overlay.setVisible(false);
-    this.title.setVisible(false);
     this.scene.input.setDefaultCursor("default");
-    this.clearCards();
+
+    const callback = this.onChoose;
+    const upgrade = card.upgrade;
     this.onChoose = null;
+
+    this.scene.tweens.killTweensOf(card.container);
+    this.scene.tweens.add({
+      targets: card.container,
+      scale: { from: 1, to: 0.9 },
+      duration: 70,
+      yoyo: true,
+      ease: "Sine.InOut",
+      onComplete: () => {
+        this.overlay.setVisible(false);
+        this.title.setVisible(false);
+        this.clearCards();
+        callback?.(upgrade);
+      },
+    });
   }
 
   private clearCards(): void {
-    this.cards.forEach((card) => card.container.destroy());
+    this.cards.forEach((card) => {
+      this.scene.tweens.killTweensOf(card.container);
+      card.container.destroy();
+    });
     this.cards.length = 0;
   }
 }

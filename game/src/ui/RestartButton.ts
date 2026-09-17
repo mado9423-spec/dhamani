@@ -12,6 +12,16 @@ const BUTTON_HEIGHT = 56;
  * Container child's own depth above a full-screen sibling overlay, so
  * per-object setInteractive() isn't used here either. Also activates on
  * Enter/Space when a keyboard is available, without requiring one.
+ *
+ * Takes a way to ask whether PauseOverlay is currently showing, the same
+ * defense-in-depth technique used by UpgradeSelection: PauseOverlay's own
+ * "tap anywhere to resume" is unconditional, so without this a single tap
+ * meant only to dismiss it could also land on this button underneath and
+ * silently restart. See UpgradeSelection's doc comment for why this has
+ * to be a lazily-evaluated closure and not a stored reference — the same
+ * listener-registration-order requirement applies here (MainScene keeps
+ * constructing DeathScreen/VictoryScreen, and so this button, ahead of
+ * PauseOverlay).
  */
 export class RestartButton {
   private readonly scene: Phaser.Scene;
@@ -19,15 +29,17 @@ export class RestartButton {
   private readonly background: Phaser.GameObjects.Rectangle;
   private readonly bounds: Phaser.Geom.Rectangle;
   private readonly keyboard: Phaser.Input.Keyboard.KeyboardPlugin | null;
+  private readonly isPauseOverlayShowing: () => boolean;
   private onPress: (() => void) | null = null;
   private shown = false;
   // Guards against a pointer-up and a keydown activating the same button in
   // the same frame from firing the callback twice.
   private activated = false;
 
-  constructor(scene: Phaser.Scene, x: number, y: number, label: string) {
+  constructor(scene: Phaser.Scene, x: number, y: number, label: string, isPauseOverlayShowing: () => boolean) {
     this.scene = scene;
     this.keyboard = scene.input.keyboard;
+    this.isPauseOverlayShowing = isPauseOverlayShowing;
 
     this.container = scene.add.container(x, y).setScrollFactor(0).setDepth(3001).setVisible(false);
 
@@ -54,6 +66,17 @@ export class RestartButton {
     this.activated = false;
     this.background.setFillStyle(COLORS.player, 1);
     this.container.setVisible(true);
+
+    this.scene.tweens.killTweensOf(this.container);
+    this.container.setScale(0.8);
+    this.container.setAlpha(0);
+    this.scene.tweens.add({
+      targets: this.container,
+      scale: 1,
+      alpha: 1,
+      duration: 260,
+      ease: "Back.Out",
+    });
   }
 
   hide(): void {
@@ -71,7 +94,7 @@ export class RestartButton {
   }
 
   private handlePointerMove(pointer: Phaser.Input.Pointer): void {
-    if (!this.shown) {
+    if (!this.shown || this.isPauseOverlayShowing()) {
       return;
     }
 
@@ -80,7 +103,7 @@ export class RestartButton {
   }
 
   private handlePointerUp(pointer: Phaser.Input.Pointer): void {
-    if (!this.shown) {
+    if (!this.shown || this.isPauseOverlayShowing()) {
       return;
     }
 
@@ -90,7 +113,7 @@ export class RestartButton {
   }
 
   private handleKeyActivate(): void {
-    if (!this.shown) {
+    if (!this.shown || this.isPauseOverlayShowing()) {
       return;
     }
 
@@ -104,7 +127,21 @@ export class RestartButton {
 
     this.activated = true;
     const callback = this.onPress;
-    this.hide();
-    callback?.();
+
+    // A quick "punch" before the button (and everything else on this
+    // overlay) is torn down, so the press reads as an intentional hit
+    // rather than an instant cut.
+    this.scene.tweens.killTweensOf(this.container);
+    this.scene.tweens.add({
+      targets: this.container,
+      scale: { from: 1, to: 0.9 },
+      duration: 70,
+      yoyo: true,
+      ease: "Sine.InOut",
+      onComplete: () => {
+        this.hide();
+        callback?.();
+      },
+    });
   }
 }

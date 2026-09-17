@@ -1,4 +1,5 @@
 import Phaser from "phaser";
+import { AudioManager } from "../audio/AudioManager";
 import { MIN_FIRE_INTERVAL_SECONDS, PLAYER_FIRE_RANGE, PROJECTILE_SPEED } from "../config/CombatConfig";
 import { COLORS } from "../config/GameConfig";
 import { QualitySettings } from "../config/QualityConfig";
@@ -20,12 +21,23 @@ export class CombatSystem {
   private readonly projectileManager: ProjectileManager;
   private readonly pickupManager: PickupManager;
   private readonly effectsManager: EffectsManager;
+  private readonly scene: Phaser.Scene;
+  private readonly quality: QualitySettings;
+  private readonly audio: AudioManager;
   // Reused every shot instead of allocating a new Vector2 each time —
   // fire() only reads x/y out of it synchronously, never keeps it.
   private readonly scratchDirection = new Phaser.Math.Vector2();
   private fireTimer = 0;
 
-  constructor(scene: Phaser.Scene, private readonly enemyManager: EnemyManager, quality: QualitySettings) {
+  constructor(
+    scene: Phaser.Scene,
+    private readonly enemyManager: EnemyManager,
+    quality: QualitySettings,
+    audio: AudioManager
+  ) {
+    this.scene = scene;
+    this.quality = quality;
+    this.audio = audio;
     this.projectileManager = new ProjectileManager(scene);
     this.pickupManager = new PickupManager(scene);
     this.effectsManager = new EffectsManager(scene, quality);
@@ -55,6 +67,7 @@ export class CombatSystem {
 
     this.scratchDirection.set(target.x - player.x, target.y - player.y).normalize();
     this.projectileManager.fire(player.x, player.y, this.scratchDirection, PROJECTILE_SPEED, player.damage);
+    this.audio.play("fire");
     this.fireTimer = CombatSystem.fireIntervalFor(player.attackSpeed);
   }
 
@@ -97,13 +110,22 @@ export class CombatSystem {
 
   private resolveHit(projectile: Projectile, enemy: Enemy): void {
     const damage = projectile.damage;
+    const isBoss = enemy.type === "boss" || enemy.type === "finalBoss";
     projectile.deactivate();
 
     this.effectsManager.spawnHitEffect(enemy.x, enemy.y, COLORS.projectile);
     this.effectsManager.spawnDamageNumber(enemy.x, enemy.y - enemy.radius, damage);
+    this.audio.play("hit");
+
+    // A little extra weight on boss hits specifically — cheap, short, and
+    // only ever one at a time since only one boss is ever active.
+    if (isBoss && this.quality.screenShakeEnabled) {
+      this.scene.cameras.main.shake(60, 0.0015 * this.quality.screenShakeIntensityScale);
+    }
 
     const killed = enemy.takeDamage(damage);
     if (killed) {
+      this.audio.play("enemyDeath");
       this.pickupManager.spawn("xp", enemy.x, enemy.y, enemy.xpReward);
       this.pickupManager.spawn("coin", enemy.x, enemy.y + 6, enemy.coinReward);
     }

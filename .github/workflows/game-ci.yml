@@ -1,0 +1,42 @@
+name: Survive 7 Nights CI
+
+# Scoped to the game/ subdirectory only — this repository's root is a
+# separate, unrelated app with its own CI (if any); this workflow must
+# never affect it. Both the path filter below and every step's
+# working-directory keep the two completely independent.
+on:
+  push:
+    branches: [main]
+    paths:
+      - "game/**"
+      - ".github/workflows/game-ci.yml"
+  pull_request:
+    paths:
+      - "game/**"
+      - ".github/workflows/game-ci.yml"
+
+defaults:
+  run:
+    working-directory: game
+
+jobs:
+  build:
+    name: Type-check & build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+          cache-dependency-path: game/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Type-check
+        run: npx tsc --noEmit
+
+      - name: Build
+        run: npm run build

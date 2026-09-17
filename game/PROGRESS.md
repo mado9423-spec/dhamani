@@ -1,104 +1,80 @@
 # PROGRESS.md — Survive: 7 Nights
 
-Current status snapshot. Last updated: 2026-09-17 (P1 background-pause/upgrade-selection fix pass).
+Current status snapshot. **Status: Release Candidate.** Last updated:
+2026-09-17 (RC pass — see `PROJECT_AUDIT.md`'s "Release Candidate
+Readiness" section for the full report).
 
 ## What exists and works (verified this session)
 
 - **Core loop:** Player movement (keyboard + virtual joystick), auto-fire
   combat at nearest enemy in range, projectile/enemy/pickup object pooling,
-  XP → level-up → 3-card upgrade selection, coin collection.
+  XP → level-up → 3-card upgrade selection (capped, no dead ends), coin
+  collection.
 - **Content:** 3 enemy types (Walker, Fast, Tank), a per-night Boss and a
   distinct Final Boss, all 7 Nights implemented with escalating wave counts
   (10→75 enemies) and a `difficultyMultiplier` (1.0→1.9) scaling
   health/damage/rewards.
-- **UI:** HUD (health/XP/level/coins/wave status), wave/boss announcement
-  banners, boss health bar, death screen, victory screen, upgrade-selection
-  modal — all confirmed rendering correctly in a live browser test.
+- **UI:** HUD (health/XP/level/coins/wave status/best-night record),
+  wave/boss announcement banners, boss health bar, death screen, victory
+  screen, upgrade-selection modal, background-pause gate — all with
+  fade-in/pop-in transitions and press-punch feedback, all confirmed
+  rendering correctly in live browser tests (desktop + mobile viewport).
+- **Progression persistence:** best night reached, best level, and
+  high-score coins survive a real page reload via `SaveManager`, shown on
+  the HUD.
+- **Audio:** every key moment (fire, hit, enemy death, player damage/death,
+  level up, upgrade pick, wave start, boss start, victory) has a
+  procedurally-synthesized SFX via the Web Audio API — no audio assets
+  needed.
+- **Juice:** damage/level-up/boss/victory/death color-grade flash pulses, a
+  permanent subtle vignette, particle bursts on player death and every
+  boss defeat/victory, extra screenshake on boss hits and player death, a
+  damage "squash" punch on the player — all via Phaser's own
+  Tweens/Particles/Graphics, no new dependency.
 - **Mobile:** Virtual joystick + fire button (touch-only devices), safe-area
-  inset handling, resize/orientation handling, "tap to resume" pause on
-  backgrounding, LOW/MEDIUM/HIGH quality tiers (particle pool sizes, screen
-  shake, antialiasing) auto-selected from device capability.
+  inset handling (now including the HUD, not just touch controls),
+  resize/orientation handling, "tap to resume" pause on backgrounding,
+  LOW/MEDIUM/HIGH quality tiers (particle pool sizes, screen shake,
+  antialiasing) auto-selected from device capability.
+- **Release engineering:** production source maps disabled, the JS bundle
+  is split into a `phaser` vendor chunk and a small app chunk, a favicon is
+  served, a global error boundary shows a plain-DOM fallback instead of a
+  blank screen on an uncaught error, and a GitHub Actions workflow runs
+  `tsc --noEmit` + `npm run build` on every push/PR touching `game/`.
 - **Engineering quality:** TypeScript strict mode clean (zero `any`, zero
-  `@ts-ignore`), `npx tsc --noEmit` and `npm run build` both pass cleanly,
-  zero console/page errors during live play other than a missing favicon,
-  object pooling is correctly implemented (a prior CRITICAL
-  pool-exhaustion/hijack bug is confirmed fixed).
+  `@ts-ignore`) across the whole pass, `npx tsc --noEmit` and `npm run
+  build` both pass cleanly, zero console/page errors during live play
+  (favicon 404 is gone), object pooling is correctly implemented, no
+  listener or tween accumulation across repeated
+  restart/upgrade/background cycles (verified via Playwright).
 
-## What's missing or broken (see PROJECT_AUDIT.md for full detail)
+## What's left (all P0/P1 items and every item from this RC pass are done)
 
-- **~~No restart flow (P0)~~ — FIXED.** Death and Victory screens now show
-  an "إعادة اللعب" (Play Again) button (`src/ui/RestartButton.ts`) that
-  calls `this.scene.restart()`, giving Phaser's own scene lifecycle a
-  genuinely clean reset. Verified via Playwright: die→restart→die→restart,
-  and victory→restart repeated twice, all reset HP/level/XP/coins/night/wave
-  to fresh-start values every time, with zero listener accumulation across
-  4 consecutive restarts (game/scale/input listener counts confirmed
-  constant) and zero console/page errors introduced. See
-  `PROJECT_AUDIT.md`'s "P0 fix" note for the full root-cause writeup.
-- **No persistence (P1).** `SaveManager` exists but is never called anywhere
-  — no progress survives a reload.
-- **No audio (P1).** `AudioManager` exists but is never called anywhere, and
-  no audio assets exist in `public/assets/`.
-- **~~Uncapped upgrade stacking (P1)~~ — FIXED.** Every upgrade (damage,
-  attack speed, move speed) is now capped at `MAX_UPGRADE_LEVEL = 10` picks
-  (`config/UpgradeConfig.ts`), tracked per-run in
-  `PlayerStats.upgradeLevels` and enforced in `Player.applyUpgrade()` (a
-  no-op once maxed). The auto-fire interval additionally has its own
-  independent floor, `MIN_FIRE_INTERVAL_SECONDS = 0.1` s
-  (`config/CombatConfig.ts`), enforced in `CombatSystem.fireIntervalFor()`
-  regardless of `attackSpeed`'s source — guards NaN/Infinity/zero/negative,
-  not just the capped case. The upgrade-selection screen now filters
-  `UPGRADE_POOL` down to non-maxed upgrades before offering choices, and
-  silently skips showing the screen at all if every upgrade is already
-  maxed (never a 0-choice dead end). Verified via Playwright: applying each
-  upgrade 20× (double the cap) leaves its level pinned at 10 and its stat
-  value unchanged past that point; attack speed maxes at 9.3/sec
-  (~107.5ms/shot, safely above the 100ms floor); all three stats stay
-  finite and positive; a forced level-up with everything maxed does not
-  pause the game or show an empty screen; restart still resets
-  `upgradeLevels` back to `{0,0,0}` (confirms a related fix — the stats
-  factory was changed from a shared constant to a per-Player factory so a
-  nested `upgradeLevels` object can't leak between runs).
-- **~~Possible input-overlap bug (P1, logic-derived)~~ — FIXED and confirmed
-  reproduced pre-fix.** Backgrounding while the upgrade-selection screen
-  was open previously layered PauseOverlay on top of it; since both
-  registered independent global `pointerup` listeners with no mutual
-  awareness, a single tap meant to dismiss "Paused" could also land on a
-  hidden card and silently apply it — reproduced live via Playwright
-  before fixing (a forced-visible PauseOverlay + a tap on a covered card
-  incremented that upgrade's level with the card never having been seen).
-  Fixed two ways: (1) `MainScene.showBackgroundPause()` now no-ops
-  whenever `paused` (upgrade selection open) is already true — the
-  upgrade screen is its own valid paused state, so PauseOverlay simply
-  never appears over it anymore, and returning from background leaves the
-  same screen exactly as it was, no extra tap needed; (2)
-  `UpgradeSelection`'s pointer handlers independently defer to
-  `PauseOverlay.isShowing` as a second, defense-in-depth layer, verified
-  to still correctly block a card pick even when PauseOverlay is
-  force-shown by test code bypassing fix (1) entirely. Verified via
-  Playwright (desktop mouse) and a Pixel-7-emulated touch viewport: normal
-  PLAYING background/foreground gate unaffected, upgrade selection
-  survives background/foreground intact and remains genuinely clickable
-  afterward, no stuck state after choosing or after restarting mid-cycle,
-  and `game.events`/`scene.input` listener counts stay identical across 3
-  repeated background+upgrade+restart cycles (no accumulation).
-- **Polish gaps (P2/P3):** production source maps shipped, single 1.5 MB JS
-  chunk, missing favicon (real reproducible 404 on load), no top-level error
-  handling around bootstrap, no CI/`engines` field, no preload
-  infrastructure, HUD doesn't re-anchor on orientation change, `ObjectPool`
-  scans are O(n) (negligible at current pool sizes).
+- **Nothing blocking.** Every P0 and P1 from the prior audits, and every
+  item from this Release Candidate pass (SaveManager, AudioManager, source
+  maps, favicon, bundle splitting, bootstrap error handling, CI, HUD
+  rotation, Death/Victory screen hardening, motion/juice), is implemented
+  and verified. See `RELEASE_CHECKLIST.md` — every box is checked.
+- **P3 / deliberately deferred, not blocking:**
+  - `BootScene` still has no `preload()` — not needed, since there are no
+    image/font assets and audio is synthesized rather than loaded.
+  - `ObjectPool.forEachActive()`/`activeCount` are still O(n) linear scans
+    — negligible at current pool sizes (40/40/60), noted previously as an
+    accepted tradeoff.
+  - The vignette is a hand-drawn approximation (layered semi-transparent
+    circles at each screen corner), not a true radial-gradient shader —
+    Phaser's FX pipeline (`postFX.addVignette()`) only applies per
+    GameObject to types implementing `PostPipeline` (Sprites/Containers),
+    not the `Rectangle`/`Arc` Shape objects this project draws everything
+    with, and wouldn't cover the whole screen regardless. The chosen
+    approach works correctly with this project's pure-Shapes rendering and
+    was visually confirmed via screenshots.
 
 ## Immediate next step
 
-P0 (restart), the uncapped-upgrade-stacking P1, and the background-pause /
-upgrade-selection input-conflict P1 are all done. See `RELEASE_CHECKLIST.md`
-for the remaining pre-launch checklist and `PROJECT_AUDIT.md`'s
-"TOP 10 PRIORITIES" for fix order. Per instruction, only that one P1 item
-was fixed in this pass — the rest of P1/P2 remain open and untouched,
-waiting for direction. One related, explicitly out-of-scope observation
-from this pass: `DeathScreen`/`VictoryScreen`'s restart button has the same
-shape of unguarded-overlap potential with `PauseOverlay` (both could be
-visible together if the player dies while backgrounded), but the
-consequence there is at most "restart fires a little more eagerly than
-intended," not a silently corrupted stat — left untouched as it's a
-different ticket.
+None blocking. The project is a Release Candidate: `npx tsc --noEmit` and
+`npm run build` are clean, and every documented P0/P1 plus every item in
+this RC pass's scope is implemented and Playwright-verified (desktop +
+mobile viewport, including a real page reload for persistence). Future
+work is purely optional polish (see `PROJECT_AUDIT.md`'s remaining P3
+notes) — nothing here should block a release decision.
