@@ -1,4 +1,10 @@
-export type EnemyType = "walker" | "fast" | "tank";
+// "leaper"/"exploder"/"ranged" are defined here only — not yet added to
+// ENEMY_TYPES, so NightManager's random wave spawning can't pick them up
+// yet. Each still needs its own movement/attack behavior wired into
+// Enemy.ts (leap arcs, death-explosion AoE, ranged projectile firing)
+// before it's spawn-ready; this is just the stats/visual shape for that
+// future work.
+export type EnemyType = "walker" | "fast" | "tank" | "leaper" | "exploder" | "ranged";
 export type EnemyTypeId = EnemyType | "boss" | "finalBoss";
 
 export interface EnemyStats {
@@ -97,6 +103,81 @@ export const ENEMY_DEFINITIONS: Record<EnemyType, EnemyDefinition> = {
       style: "slime",
       eyeColor: 0xcfe0a8,
       limbColor: 0x000000,
+    },
+  },
+  // Jumps toward the player in bursts instead of closing the distance
+  // linearly like walker/fast/tank. Springy jointed legs read as
+  // "arachnid" (twitchy limbs) rather than a pulsing blob.
+  leaper: {
+    stats: {
+      health: 20,
+      maxHealth: 20,
+      speed: 150,
+      damage: 9,
+      attackRange: 36,
+      attackCooldown: 0.9,
+      xpReward: 6,
+      coinReward: 2,
+    },
+    visual: {
+      radius: 14,
+      color: 0x1e2b1a,
+      strokeColor: 0x0a120a,
+      strokeWidth: 2,
+      style: "arachnid",
+      eyeColor: 0xbfff6b,
+      limbColor: 0x4a6a3a,
+    },
+  },
+  // Detonates in an AoE burst on death instead of just stopping dead —
+  // fragile but its damage stat reflects the explosion payoff, not a
+  // melee hit. Kept "slime" (unstable blob about to burst) rather than
+  // "arachnid".
+  exploder: {
+    stats: {
+      health: 14,
+      maxHealth: 14,
+      speed: 110,
+      damage: 20,
+      attackRange: 30,
+      attackCooldown: 1.2,
+      xpReward: 7,
+      coinReward: 2,
+    },
+    visual: {
+      radius: 13,
+      color: 0x4a2410,
+      strokeColor: 0x1a0d05,
+      strokeWidth: 2,
+      style: "slime",
+      eyeColor: 0xfff066,
+      limbColor: 0x000000,
+    },
+  },
+  // Fires a projectile from range instead of closing in — attackRange is
+  // far beyond every melee type's (well under PLAYER_FIRE_RANGE=380 so
+  // the player can still out-range it), speed is low since it kites
+  // rather than rushes, and attackCooldown is slower than the melee
+  // types to balance the range advantage.
+  ranged: {
+    stats: {
+      health: 18,
+      maxHealth: 18,
+      speed: 70,
+      damage: 10,
+      attackRange: 220,
+      attackCooldown: 1.6,
+      xpReward: 8,
+      coinReward: 2,
+    },
+    visual: {
+      radius: 12,
+      color: 0x1a1030,
+      strokeColor: 0x080314,
+      strokeWidth: 2,
+      style: "arachnid",
+      eyeColor: 0x8f6bff,
+      limbColor: 0x5a3a8f,
     },
   },
 };
