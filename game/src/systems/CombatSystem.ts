@@ -1,6 +1,6 @@
 import Phaser from "phaser";
 import { AudioManager } from "../audio/AudioManager";
-import { MIN_FIRE_INTERVAL_SECONDS, PLAYER_FIRE_RANGE, PROJECTILE_SPEED } from "../config/CombatConfig";
+import { ENEMY_PROJECTILE_POOL_SIZE, ENEMY_PROJECTILE_SPEED, MIN_FIRE_INTERVAL_SECONDS, PLAYER_FIRE_RANGE, PROJECTILE_SPEED } from "../config/CombatConfig";
 import { COLORS } from "../config/GameConfig";
 import { QualitySettings } from "../config/QualityConfig";
 import { Enemy } from "../entities/Enemy";
@@ -20,6 +20,11 @@ import { ProjectileManager } from "./ProjectileManager";
  */
 export class CombatSystem {
   private readonly projectileManager: ProjectileManager;
+  // "ranged" enemies' bolts — a separate ProjectileManager instance (same
+  // Projectile class/visual/pooling pattern as the player's own, just a
+  // smaller pool and the opposite collision target) rather than a new
+  // class. See handleEnemyRangedAttacks/handleEnemyProjectileCollisions.
+  private readonly enemyProjectileManager: ProjectileManager;
   private readonly pickupManager: PickupManager;
   private readonly effectsManager: EffectsManager;
   private readonly scene: Phaser.Scene;
@@ -44,6 +49,11 @@ export class CombatSystem {
     this.screenFx = screenFx;
     this.effectsManager = new EffectsManager(scene, quality);
     this.projectileManager = new ProjectileManager(scene, (x, y) => this.effectsManager.spawnTrail(x, y));
+    this.enemyProjectileManager = new ProjectileManager(
+      scene,
+      (x, y) => this.effectsManager.spawnTrail(x, y),
+      ENEMY_PROJECTILE_POOL_SIZE
+    );
     this.pickupManager = new PickupManager(scene);
   }
 
@@ -60,9 +70,12 @@ export class CombatSystem {
     // moving it starting next frame, removes that tunneling risk instead
     // of just narrowing it.
     this.projectileManager.update(deltaSeconds, worldBounds);
+    this.enemyProjectileManager.update(deltaSeconds, worldBounds);
     this.handleAutoFire(deltaSeconds, player);
+    this.handleEnemyRangedAttacks(player);
     this.pickupManager.update(deltaSeconds, player);
     this.handleProjectileCollisions();
+    this.handleEnemyProjectileCollisions(player);
   }
 
   private handleAutoFire(deltaSeconds: number, player: Player): void {
@@ -109,6 +122,43 @@ export class CombatSystem {
     }
 
     return Math.max(MIN_FIRE_INTERVAL_SECONDS, 1 / attackSpeed);
+  }
+
+  /**
+   * Drains this frame's "ranged" attack requests (see
+   * Enemy.consumeRangedAttackRequest) and fires a hostile bolt at
+   * wherever the player currently is for each — a straight shot, not
+   * homing, same as the player's own auto-fire.
+   */
+  private handleEnemyRangedAttacks(player: Player): void {
+    if (player.isDead) {
+      return;
+    }
+
+    this.enemyManager.forEachActive((enemy) => {
+      if (!enemy.consumeRangedAttackRequest()) {
+        return;
+      }
+
+      this.scratchDirection.set(player.x - enemy.x, player.y - enemy.y).normalize();
+      this.enemyProjectileManager.fire(enemy.x, enemy.y, this.scratchDirection, ENEMY_PROJECTILE_SPEED, enemy.damage);
+    });
+  }
+
+  private handleEnemyProjectileCollisions(player: Player): void {
+    this.enemyProjectileManager.forEachActive((projectile) => {
+      if (!projectile.active) {
+        return;
+      }
+
+      const dx = projectile.x - player.x;
+      const dy = projectile.y - player.y;
+      const hitDistance = player.radius + projectile.radius;
+      if (dx * dx + dy * dy <= hitDistance * hitDistance) {
+        projectile.deactivate();
+        player.takeDamage(projectile.damage);
+      }
+    });
   }
 
   private handleProjectileCollisions(): void {

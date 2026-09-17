@@ -3,12 +3,22 @@ import { PROJECTILE_POOL_SIZE } from "../config/CombatConfig";
 import { Projectile } from "../entities/Projectile";
 import { ObjectPool } from "./ObjectPool";
 
-/** Owns the projectile pool: firing and per-frame movement/expiry. */
+/**
+ * Owns a projectile pool: firing and per-frame movement/expiry. Used for
+ * the player's own auto-fired bolts (the default pool size), and reused
+ * as-is for enemy-fired ones too (see CombatSystem's enemyProjectileManager)
+ * with a smaller poolSize override — same Projectile class/visual, same
+ * pooling pattern, just a separate pool and collision target.
+ */
 export class ProjectileManager {
   private readonly pool: ObjectPool<Projectile>;
 
-  constructor(private readonly scene: Phaser.Scene, onTrail: (x: number, y: number) => void) {
-    this.pool = new ObjectPool(() => new Projectile(this.scene, onTrail), PROJECTILE_POOL_SIZE);
+  constructor(
+    private readonly scene: Phaser.Scene,
+    onTrail: (x: number, y: number) => void,
+    poolSize: number = PROJECTILE_POOL_SIZE
+  ) {
+    this.pool = new ObjectPool(() => new Projectile(this.scene, onTrail), poolSize);
   }
 
   fire(x: number, y: number, direction: Phaser.Math.Vector2, speed: number, damage: number): void {

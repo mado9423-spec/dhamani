@@ -1,6 +1,7 @@
 import Phaser from "phaser";
 import { enemyAnimKey } from "../config/AnimationConfig";
 import { SPRITE_ASSETS_REGISTRY_KEY } from "../config/AssetConfig";
+import { EXPLODER_EXPLOSION_RADIUS } from "../config/CombatConfig";
 import { COLORS } from "../config/GameConfig";
 import { EnemyDefinition, EnemyStats, EnemyTypeId, getEnemyDefinition } from "../config/EnemyConfig";
 import { clamp } from "../utils/MathUtils";
@@ -20,6 +21,15 @@ const LIMB_BASE_ANGLES = [-2.35, -0.8, 0.8, 2.35];
 const LIMB_BEND_BASE = 0.9;
 const LIMB_TWITCH_AMPLITUDE = 0.35;
 const LIMB_BEND_TWITCH_AMPLITUDE = 0.4;
+
+// "leaper" alternates between a short burst of movement (at its normal
+// stats.speed, covering LEAP_DURATION_MS worth of distance) and standing
+// still for LEAP_INTERVAL_MS — a periodic pounce rather than the other
+// types' continuous chase — plus a small vertical hop arc layered on top
+// of the usual walk bob so the burst visibly reads as a jump.
+const LEAP_DURATION_MS = 220;
+const LEAP_INTERVAL_MS = 650;
+const LEAP_HOP_HEIGHT = 6;
 
 interface LimbRig {
   pivot: Phaser.GameObjects.Container;
@@ -65,6 +75,19 @@ export class Enemy extends Phaser.GameObjects.Container {
   private readonly limbs: LimbRig[] = [];
   private attackTimer = 0;
   private dying = false;
+  // "leaper" movement gate — see LEAP_DURATION_MS/LEAP_INTERVAL_MS above.
+  private leaping = false;
+  private leapPhaseTimer = 0;
+  // "ranged" sets this instead of dealing instant melee damage when its
+  // attack cooldown fires; CombatSystem drains it each frame (see
+  // consumeRangedAttackRequest()) to spawn a hostile projectile aimed at
+  // wherever the player currently is.
+  private rangedAttackRequested = false;
+  // Cached every update() call so die() — reached asynchronously later,
+  // off of takeDamage() — can still run "exploder"'s AoE check without
+  // needing the target threaded through takeDamage()/die() as well. Only
+  // ever the one Player this single-player game has.
+  private lastTarget: Player | null = null;
   private readonly webgl: boolean;
   private readonly phaseSeed = Math.random() * 1000;
   private animTimeMs = 0;
@@ -177,6 +200,10 @@ export class Enemy extends Phaser.GameObjects.Container {
     };
     this.attackTimer = 0;
     this.dying = false;
+    this.leaping = false;
+    this.leapPhaseTimer = 0;
+    this.rangedAttackRequested = false;
+    this.lastTarget = null;
 
     const radius = definition.visual.radius;
     this.hitRadius = radius;
@@ -255,6 +282,7 @@ export class Enemy extends Phaser.GameObjects.Container {
       return;
     }
 
+    this.lastTarget = target;
     this.animTimeMs += deltaSeconds * 1000;
     this.updatePulse();
 
@@ -270,32 +298,81 @@ export class Enemy extends Phaser.GameObjects.Container {
     let moving = false;
 
     if (distance > this.stats.attackRange) {
-      moving = true;
-      const directionX = dx / distance;
-      const directionY = dy / distance;
-      const travel = Math.min(this.stats.speed * deltaSeconds, distance - this.stats.attackRange);
+      moving = this.type === "leaper" ? this.updateLeapGate(deltaSeconds) : true;
 
-      this.velocity.set(directionX * this.stats.speed, directionY * this.stats.speed);
-      this.setPosition(
-        clamp(this.x + directionX * travel, worldBounds.x + this.radius, worldBounds.right - this.radius),
-        clamp(this.y + directionY * travel, worldBounds.y + this.radius, worldBounds.bottom - this.radius)
-      );
+      if (moving) {
+        const directionX = dx / distance;
+        const directionY = dy / distance;
+        const travel = Math.min(this.stats.speed * deltaSeconds, distance - this.stats.attackRange);
 
-      this.attackTimer = Math.max(0, this.attackTimer - deltaSeconds);
-      this.facing = resolveFacing(directionX, this.facing);
-      this.visualGroup.scaleX = this.facing;
+        this.velocity.set(directionX * this.stats.speed, directionY * this.stats.speed);
+        this.setPosition(
+          clamp(this.x + directionX * travel, worldBounds.x + this.radius, worldBounds.right - this.radius),
+          clamp(this.y + directionY * travel, worldBounds.y + this.radius, worldBounds.bottom - this.radius)
+        );
+
+        this.attackTimer = Math.max(0, this.attackTimer - deltaSeconds);
+        this.facing = resolveFacing(directionX, this.facing);
+        this.visualGroup.scaleX = this.facing;
+      } else {
+        this.velocity.set(0, 0);
+      }
     } else {
       this.velocity.set(0, 0);
       this.attackTimer -= deltaSeconds;
       if (this.attackTimer <= 0) {
         this.attackTimer = this.stats.attackCooldown;
-        target.takeDamage(this.stats.damage);
+        if (this.type === "ranged") {
+          this.rangedAttackRequested = true;
+        } else {
+          target.takeDamage(this.stats.damage);
+        }
       }
     }
 
-    this.visualGroup.y = walkBob(this.animTimeMs + this.phaseSeed, moving, BOB_AMPLITUDE, BOB_FREQUENCY_HZ);
+    this.visualGroup.y = walkBob(this.animTimeMs + this.phaseSeed, moving, BOB_AMPLITUDE, BOB_FREQUENCY_HZ) + this.leapHopOffset();
     this.updateLimbs(moving);
     this.updateSpriteAnimation(moving);
+  }
+
+  /**
+   * Toggles "leaper" between a LEAP_DURATION_MS burst of movement (at its
+   * normal stats.speed, via the same chase code every other type uses)
+   * and a LEAP_INTERVAL_MS standstill — called only for type === "leaper",
+   * every other type just moves continuously as before. Returns whether
+   * this frame is part of an active burst.
+   */
+  private updateLeapGate(deltaSeconds: number): boolean {
+    this.leapPhaseTimer -= deltaSeconds * 1000;
+    if (this.leapPhaseTimer <= 0) {
+      this.leaping = !this.leaping;
+      this.leapPhaseTimer = this.leaping ? LEAP_DURATION_MS : LEAP_INTERVAL_MS;
+    }
+    return this.leaping;
+  }
+
+  /** A small hop arc layered on top of the usual walk bob, only while a leaper's burst is active. */
+  private leapHopOffset(): number {
+    if (this.type !== "leaper" || !this.leaping) {
+      return 0;
+    }
+
+    const progress = clamp(1 - this.leapPhaseTimer / LEAP_DURATION_MS, 0, 1);
+    return -Math.sin(progress * Math.PI) * LEAP_HOP_HEIGHT;
+  }
+
+  /**
+   * True once when a "ranged" enemy's attack cooldown fires — consumed by
+   * CombatSystem (see handleEnemyRangedAttacks) to spawn a hostile
+   * projectile at the player's current position instead of instant melee
+   * damage. Always false, and a permanent no-op, for every other type.
+   */
+  consumeRangedAttackRequest(): boolean {
+    if (!this.rangedAttackRequested) {
+      return false;
+    }
+    this.rangedAttackRequested = false;
+    return true;
   }
 
   /** Asymmetric, out-of-sync breathing — always running, the "unstable void slime" look. Vector-art mode only. */
@@ -409,6 +486,10 @@ export class Enemy extends Phaser.GameObjects.Container {
     this.dying = true;
     this.velocity.set(0, 0);
 
+    if (this.type === "exploder") {
+      this.triggerExplosion();
+    }
+
     if (this.sprite) {
       const deathKey = enemyAnimKey(this.type, "death");
       if (this.scene.anims.exists(deathKey)) {
@@ -436,5 +517,19 @@ export class Enemy extends Phaser.GameObjects.Container {
         this.dying = false;
       },
     });
+  }
+
+  /** "exploder"'s AoE burst — a single instant hit against the player if they're standing inside EXPLODER_EXPLOSION_RADIUS when this dies. */
+  private triggerExplosion(): void {
+    const target = this.lastTarget;
+    if (!target || target.isDead) {
+      return;
+    }
+
+    const dx = target.x - this.x;
+    const dy = target.y - this.y;
+    if (dx * dx + dy * dy <= EXPLODER_EXPLOSION_RADIUS * EXPLODER_EXPLOSION_RADIUS) {
+      target.takeDamage(this.stats.damage);
+    }
   }
 }

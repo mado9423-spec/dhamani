@@ -1,6 +1,5 @@
 import Phaser from "phaser";
 import { ENEMY_SPAWN_MAX_DISTANCE, ENEMY_SPAWN_MIN_DISTANCE } from "../config/CombatConfig";
-import { ENEMY_TYPES } from "../config/EnemyConfig";
 import { NIGHTS, PHASE_INTRO_MS, WAVE_SPAWN_INTERVAL_MS } from "../config/NightConfig";
 import { Enemy } from "../entities/Enemy";
 import { Player } from "../entities/Player";
@@ -204,7 +203,8 @@ export class NightManager extends Phaser.Events.EventEmitter {
       return;
     }
 
-    const type = ENEMY_TYPES[Phaser.Math.Between(0, ENEMY_TYPES.length - 1)];
+    const pool = this.currentNight.enemyTypes;
+    const type = pool[Phaser.Math.Between(0, pool.length - 1)];
     const point = randomRingPoint(player.x, player.y, ENEMY_SPAWN_MIN_DISTANCE, ENEMY_SPAWN_MAX_DISTANCE, worldBounds);
     const spawned = this.enemyManager.spawnAt(type, point.x, point.y, this.currentNight.difficultyMultiplier);
 

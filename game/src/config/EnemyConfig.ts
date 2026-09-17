@@ -1,9 +1,3 @@
-// "leaper"/"exploder"/"ranged" are defined here only — not yet added to
-// ENEMY_TYPES, so NightManager's random wave spawning can't pick them up
-// yet. Each still needs its own movement/attack behavior wired into
-// Enemy.ts (leap arcs, death-explosion AoE, ranged projectile firing)
-// before it's spawn-ready; this is just the stats/visual shape for that
-// future work.
 export type EnemyType = "walker" | "fast" | "tank" | "leaper" | "exploder" | "ranged";
 export type EnemyTypeId = EnemyType | "boss" | "finalBoss";
 
@@ -182,11 +176,12 @@ export const ENEMY_DEFINITIONS: Record<EnemyType, EnemyDefinition> = {
   },
 };
 
-export const ENEMY_TYPES: EnemyType[] = ["walker", "fast", "tank"];
-
-// Boss/finalBoss aren't part of ENEMY_DEFINITIONS/ENEMY_TYPES since
-// they're never picked by random wave spawning — NightManager spawns
-// them explicitly once a night's waves are cleared.
+// Boss/finalBoss aren't part of ENEMY_DEFINITIONS since they're never
+// picked by random wave spawning — NightManager spawns them explicitly
+// once a night's waves are cleared. Which of the six EnemyType's above
+// are actually in a given night's random-spawn pool lives in
+// NightConfig.ts's NightDefinition.enemyTypes (introduced progressively
+// across the campaign), not a single flat list here.
 export const BOSS_DEFINITION: EnemyDefinition = {
   stats: {
     health: 600,

@@ -39,6 +39,22 @@ export const MIN_FIRE_INTERVAL_SECONDS = 0.1;
 // its duration, though not all concurrently alive).
 export const ENEMY_POOL_SIZE = 40;
 
+// "ranged" enemy-fired bolts — reuse the player's own Projectile class/
+// visual (see entities/Projectile.ts) in a separate pool, deliberately
+// slower than the player's PROJECTILE_SPEED (520) so an incoming shot
+// reads as dodgeable rather than an unavoidable tick of damage. Pool
+// size is far smaller than PROJECTILE_POOL_SIZE since only the "ranged"
+// type ever fires one, and it's gated to mid/late nights (see
+// NightConfig.ts).
+export const ENEMY_PROJECTILE_SPEED = 240;
+export const ENEMY_PROJECTILE_POOL_SIZE = 16;
+
+// "exploder" — AoE burst radius applied once against the player if
+// they're standing inside it when the enemy dies. Damage reuses the
+// exploder's own EnemyStats.damage (see EnemyConfig.ts) rather than a
+// separate stat.
+export const EXPLODER_EXPLOSION_RADIUS = 70;
+
 // Spawn enemies just outside the visible viewport, regardless of
 // direction from the player.
 const HALF_VIEW_DIAGONAL = Math.hypot(GAME_WIDTH, GAME_HEIGHT) / 2;
