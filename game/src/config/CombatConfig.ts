@@ -39,7 +39,16 @@ export const SHOTGUN_PROJECTILE_SPEED = 560;
 export const ORB_PROJECTILE_SPEED = 190;
 export const ORB_SPLASH_RADIUS_BASE = 50;
 export const ORB_SPLASH_RADIUS_PER_LEVEL = 12;
-export const ORB_DAMAGE_MULTIPLIER = 1.6;
+// Measured directly against a stationary, always-in-range dummy — the
+// single best case for "bolt" and the single worst case for "orb" (its
+// only real downside, being slow enough to dodge/outrun a moving
+// target, isn't in play at all against something standing still) — 1.6
+// still gave orb ~60% more single-target DPS than bolt (16 vs 10),
+// *before* counting orb's free splash damage against anything else
+// nearby: strictly better in every measurable way, not a real tradeoff.
+// 1.3 keeps a real reward for landing a slow shot (13 vs 10, +30%)
+// without stacking it on top of the splash bonus so heavily.
+export const ORB_DAMAGE_MULTIPLIER = 1.3;
 
 // Weapon (a separate top-level GameObject that tracks the player's
 // position every frame, independent of the player's own facing-flip —

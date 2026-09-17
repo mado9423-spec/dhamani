@@ -27,8 +27,19 @@ const LIMB_BEND_TWITCH_AMPLITUDE = 0.4;
 // still for LEAP_INTERVAL_MS — a periodic pounce rather than the other
 // types' continuous chase — plus a small vertical hop arc layered on top
 // of the usual walk bob so the burst visibly reads as a jump.
+//
+// LEAP_INTERVAL_MS was originally 650 (duty cycle ≈ 220/870 ≈ 25%),
+// which throttled leaper's *effective* approach speed to ~38px/s despite
+// a 150 stats.speed — slower than walker's continuous 90px/s despite
+// leaper being the nominally faster type. Measured directly (a 6s
+// isolated encounter, spawned the same distance out as every other
+// type): walker dealt 32 damage in that window, leaper only 9 — it spent
+// nearly the whole window still closing distance. 140 brings the duty
+// cycle to ≈220/360 ≈ 61%, effective speed ≈92px/s — in line with
+// walker's, while still visibly bursty/irregular rather than a smooth
+// continuous chase.
 const LEAP_DURATION_MS = 220;
-const LEAP_INTERVAL_MS = 650;
+const LEAP_INTERVAL_MS = 140;
 const LEAP_HOP_HEIGHT = 6;
 
 interface LimbRig {
