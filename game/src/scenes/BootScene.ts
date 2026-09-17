@@ -1,18 +1,19 @@
 import Phaser from "phaser";
 import { defineAnimations } from "../config/AnimationConfig";
-import { SPRITE_ASSETS_REGISTRY_KEY, SPRITE_SHEETS } from "../config/AssetConfig";
+import { SPRITE_ASSETS_REGISTRY_KEY, SPRITE_SHEETS, TILE_ASSETS, TILE_ASSETS_REGISTRY_KEY } from "../config/AssetConfig";
 
 /**
- * Entry scene. Attempts to load real sprite sheets (see
- * config/AssetConfig.ts) but never depends on them existing — this
- * project has shipped as a zero-external-asset game throughout, so
- * `public/assets/` is currently empty. Phaser's loader doesn't abort on
- * a missing file; it keeps going regardless, so preload() just queues
- * every sheet, and create() turns the *actual* outcome into a single
- * `hasSpriteAssets` flag on the registry for MainScene/Player/Enemy/
- * Weapon to branch on — sprite rendering when (and only when) every
- * sheet is genuinely usable, the existing vector-shape rendering
- * otherwise.
+ * Entry scene. Attempts to load real sprite sheets and ground tileset
+ * images (see config/AssetConfig.ts) but never depends on either
+ * existing — this project has shipped as a zero-external-asset game
+ * throughout, so `public/assets/` is currently empty. Phaser's loader
+ * doesn't abort on a missing file; it keeps going regardless, so
+ * preload() just queues every sheet/tile, and create() turns the
+ * *actual* outcome into a `hasSpriteAssets`/`hasTilesetAssets` flag pair
+ * on the registry for MainScene/Player/Enemy/Weapon/Background to branch
+ * on — real-asset rendering when (and only when) every file in that
+ * group is genuinely usable, the existing vector-shape/generated-texture
+ * rendering otherwise.
  *
  * That outcome is checked via `this.textures.exists(key)` in create(),
  * not by listening for the loader's `loaderror` event — verified the
@@ -49,11 +50,18 @@ export class BootScene extends Phaser.Scene {
         frameHeight: sheet.frameHeight,
       });
     }
+    for (const tile of TILE_ASSETS) {
+      this.load.image(tile.key, tile.path);
+    }
   }
 
   create(): void {
     const hasSpriteAssets = SPRITE_SHEETS.every((sheet) => this.textures.exists(sheet.key));
     this.registry.set(SPRITE_ASSETS_REGISTRY_KEY, hasSpriteAssets);
+
+    const hasTilesetAssets = TILE_ASSETS.every((tile) => this.textures.exists(tile.key));
+    this.registry.set(TILE_ASSETS_REGISTRY_KEY, hasTilesetAssets);
+
     defineAnimations(this);
 
     this.scene.start("MainScene");

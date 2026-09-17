@@ -1,24 +1,67 @@
 import Phaser from "phaser";
+import { TILE_ASSETS_REGISTRY_KEY, TILE_KEYS } from "../config/AssetConfig";
 import { COLORS } from "../config/GameConfig";
 
 const TILE_SIZE = 64;
 const TEXTURE_KEY = "grid-tile";
 
+// Sparse, deterministic decor scatter (real-tileset mode only) — fixed
+// spacing/offset rather than per-boot Math.random(), so placement stays
+// identical between runs instead of visibly shifting on every reload.
+const DECOR_SPACING = 420;
+const DECOR_MARGIN = 160;
+const DECOR_ALPHA = 0.85;
+
 /**
- * Simple top-down ground: a generated grid texture tiled across the
- * play area. Built from Graphics primitives so no external art is
- * required for the prototype.
+ * The play area's floor. Two rendering paths, same dual-path pattern as
+ * Player/Enemy/Weapon/Projectile (see AssetConfig.ts): a real tileset
+ * image (`public/assets/tiles/floor.png`) tiled across the world plus a
+ * sparse scatter of decor images, when that tileset actually loaded —
+ * or, this project's current, actual zero-asset state, the existing
+ * generated grid texture with its baked-in crack lines, no real image
+ * required either way.
  */
-export class Background extends Phaser.GameObjects.TileSprite {
+export class Background extends Phaser.GameObjects.Container {
   constructor(scene: Phaser.Scene, width: number, height: number) {
-    Background.ensureTexture(scene);
-    super(scene, width / 2, height / 2, width, height, TEXTURE_KEY);
+    super(scene, 0, 0);
+
+    const hasTilesetAssets = (scene.registry.get(TILE_ASSETS_REGISTRY_KEY) as boolean | undefined) ?? false;
+    const floorKey = hasTilesetAssets ? TILE_KEYS.floor : Background.ensureGeneratedTexture(scene);
+
+    this.add(scene.add.tileSprite(width / 2, height / 2, width, height, floorKey));
+
+    if (hasTilesetAssets) {
+      this.scatterDecor(scene, width, height);
+    }
+
     scene.add.existing(this);
   }
 
-  private static ensureTexture(scene: Phaser.Scene): void {
+  /**
+   * Alternates between the two decor images and staggers alternate rows
+   * by half the grid spacing, so the scatter reads as irregular clutter
+   * rather than a visibly repeating tile pattern. Real-tileset mode only
+   * — the generated-texture path already bakes its own crack-line grime
+   * directly into the floor texture (see ensureGeneratedTexture below).
+   */
+  private scatterDecor(scene: Phaser.Scene, width: number, height: number): void {
+    const decorKeys = [TILE_KEYS.decorCrack, TILE_KEYS.decorRubble];
+    let index = 0;
+
+    for (let y = DECOR_MARGIN; y < height - DECOR_MARGIN; y += DECOR_SPACING) {
+      const rowOffsetX = (Math.floor(y / DECOR_SPACING) % 2) * (DECOR_SPACING / 2);
+      for (let x = DECOR_MARGIN; x < width - DECOR_MARGIN; x += DECOR_SPACING) {
+        const key = decorKeys[index % decorKeys.length];
+        this.add(scene.add.image(x + rowOffsetX, y, key).setAlpha(DECOR_ALPHA));
+        index += 1;
+      }
+    }
+  }
+
+  /** Existing zero-asset vector-art floor, unchanged — returns the (possibly already-cached) texture key. */
+  private static ensureGeneratedTexture(scene: Phaser.Scene): string {
     if (scene.textures.exists(TEXTURE_KEY)) {
-      return;
+      return TEXTURE_KEY;
     }
 
     const graphics = scene.make.graphics({ x: 0, y: 0 }, false);
@@ -44,5 +87,7 @@ export class Background extends Phaser.GameObjects.TileSprite {
 
     graphics.generateTexture(TEXTURE_KEY, TILE_SIZE, TILE_SIZE);
     graphics.destroy();
+
+    return TEXTURE_KEY;
   }
 }

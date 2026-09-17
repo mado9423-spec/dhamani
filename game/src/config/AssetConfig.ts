@@ -31,3 +31,29 @@ export const SPRITE_SHEETS: SpriteSheetDefinition[] = [
   { key: "finalBoss", path: "assets/finalBoss.png", ...FRAME_SIZE },
   { key: "weapon_bolt", path: "assets/weapon_bolt.png", ...FRAME_SIZE },
 ];
+
+// Same registry-flag pattern as SPRITE_ASSETS_REGISTRY_KEY above, for the
+// ground tileset (see entities/Background.ts): set once in
+// BootScene.create() from the *actual* post-load texture-cache outcome
+// (never a loaderror event — see BootScene's doc comment for why), read
+// by Background to pick a real tile image over the existing generated
+// grid texture. Plain static images, not spritesheets — a floor tile and
+// a couple of scattered decor pieces, nothing animated.
+export const TILE_ASSETS_REGISTRY_KEY = "hasTilesetAssets";
+
+export interface TileAssetDefinition {
+  key: string;
+  path: string;
+}
+
+export const TILE_KEYS = {
+  floor: "tile-floor",
+  decorCrack: "tile-decor-crack",
+  decorRubble: "tile-decor-rubble",
+} as const;
+
+export const TILE_ASSETS: TileAssetDefinition[] = [
+  { key: TILE_KEYS.floor, path: "assets/tiles/floor.png" },
+  { key: TILE_KEYS.decorCrack, path: "assets/tiles/decor-crack.png" },
+  { key: TILE_KEYS.decorRubble, path: "assets/tiles/decor-rubble.png" },
+];
