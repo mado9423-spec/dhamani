@@ -12,11 +12,20 @@ export interface EnemyStats {
   coinReward: number;
 }
 
+// "slime" = an unstable, asymmetrically-pulsing void blob (walker/tank).
+// "arachnid" = a slime body plus twitching multi-segmented limbs
+// (fast/boss/finalBoss) — see Enemy.ts for how each is actually drawn.
+export type EnemyVisualStyle = "slime" | "arachnid";
+
 export interface EnemyVisual {
   radius: number;
   color: number;
   strokeColor: number;
   strokeWidth: number;
+  style: EnemyVisualStyle;
+  eyeColor: number;
+  // Only meaningful (and only drawn) when style === "arachnid".
+  limbColor: number;
 }
 
 export interface EnemyDefinition {
@@ -38,7 +47,15 @@ export const ENEMY_DEFINITIONS: Record<EnemyType, EnemyDefinition> = {
       xpReward: 5,
       coinReward: 1,
     },
-    visual: { radius: 16, color: 0xffa94d, strokeColor: 0x7a4a17, strokeWidth: 2 },
+    visual: {
+      radius: 16,
+      color: 0x2c1f38,
+      strokeColor: 0x120a18,
+      strokeWidth: 2,
+      style: "slime",
+      eyeColor: 0xcfe0a8,
+      limbColor: 0x000000,
+    },
   },
   fast: {
     stats: {
@@ -51,7 +68,15 @@ export const ENEMY_DEFINITIONS: Record<EnemyType, EnemyDefinition> = {
       xpReward: 4,
       coinReward: 1,
     },
-    visual: { radius: 11, color: 0xff6b9d, strokeColor: 0x82264a, strokeWidth: 2 },
+    visual: {
+      radius: 11,
+      color: 0x1c1626,
+      strokeColor: 0x0a0710,
+      strokeWidth: 2,
+      style: "arachnid",
+      eyeColor: 0xff8f6b,
+      limbColor: 0x9c8f7a,
+    },
   },
   tank: {
     stats: {
@@ -64,7 +89,15 @@ export const ENEMY_DEFINITIONS: Record<EnemyType, EnemyDefinition> = {
       xpReward: 12,
       coinReward: 3,
     },
-    visual: { radius: 24, color: 0x8b2635, strokeColor: 0x3d0f16, strokeWidth: 3 },
+    visual: {
+      radius: 24,
+      color: 0x3a1424,
+      strokeColor: 0x150609,
+      strokeWidth: 3,
+      style: "slime",
+      eyeColor: 0xcfe0a8,
+      limbColor: 0x000000,
+    },
   },
 };
 
@@ -84,7 +117,15 @@ export const BOSS_DEFINITION: EnemyDefinition = {
     xpReward: 100,
     coinReward: 40,
   },
-  visual: { radius: 46, color: 0x9333ea, strokeColor: 0x2e0a4d, strokeWidth: 5 },
+  visual: {
+    radius: 46,
+    color: 0x5c0f2a,
+    strokeColor: 0x1c0410,
+    strokeWidth: 5,
+    style: "arachnid",
+    eyeColor: 0xffb03d,
+    limbColor: 0x6a1622,
+  },
 };
 
 // The Night 7 capstone. A distinct (bigger, tougher) definition rather
@@ -101,7 +142,15 @@ export const FINAL_BOSS_DEFINITION: EnemyDefinition = {
     xpReward: 180,
     coinReward: 70,
   },
-  visual: { radius: 56, color: 0x7f1d1d, strokeColor: 0x1a0505, strokeWidth: 6 },
+  visual: {
+    radius: 56,
+    color: 0x2b0509,
+    strokeColor: 0x0a0102,
+    strokeWidth: 6,
+    style: "arachnid",
+    eyeColor: 0xff3b4d,
+    limbColor: 0x3a0a12,
+  },
 };
 
 export function getEnemyDefinition(type: EnemyTypeId): EnemyDefinition {

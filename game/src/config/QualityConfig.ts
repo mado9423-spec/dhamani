@@ -10,6 +10,8 @@ export interface QualitySettings {
   // Never touches gameplay pools (enemies/projectiles/pickups).
   damageNumberPoolSize: number;
   hitEffectPoolSize: number;
+  muzzleFlashPoolSize: number;
+  projectileTrailPoolSize: number;
 
   // Screen shake on taking damage.
   screenShakeEnabled: boolean;
@@ -26,6 +28,8 @@ export const QUALITY_PRESETS: Record<QualityLevel, QualitySettings> = {
   low: {
     damageNumberPoolSize: 10,
     hitEffectPoolSize: 10,
+    muzzleFlashPoolSize: 6,
+    projectileTrailPoolSize: 12,
     screenShakeEnabled: false,
     screenShakeIntensityScale: 0,
     antialias: false,
@@ -34,6 +38,8 @@ export const QUALITY_PRESETS: Record<QualityLevel, QualitySettings> = {
   medium: {
     damageNumberPoolSize: 20,
     hitEffectPoolSize: 20,
+    muzzleFlashPoolSize: 10,
+    projectileTrailPoolSize: 20,
     screenShakeEnabled: true,
     screenShakeIntensityScale: 0.6,
     antialias: true,
@@ -42,6 +48,8 @@ export const QUALITY_PRESETS: Record<QualityLevel, QualitySettings> = {
   high: {
     damageNumberPoolSize: 30,
     hitEffectPoolSize: 30,
+    muzzleFlashPoolSize: 14,
+    projectileTrailPoolSize: 30,
     screenShakeEnabled: true,
     screenShakeIntensityScale: 1,
     antialias: true,

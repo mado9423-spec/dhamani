@@ -1,8 +1,9 @@
 # PROGRESS.md — Survive: 7 Nights
 
-Current status snapshot. **Status: Release Candidate (visually
-overhauled).** Last updated: 2026-09-17 (visual-overhaul pass — see
-`PROJECT_AUDIT.md`'s "Visual Overhaul" section for the full report).
+Current status snapshot. **Status: Release Candidate (Dark Gothic /
+Eldritch redesign).** Last updated: 2026-09-17 (Dark Gothic pass — see
+`PROJECT_AUDIT.md`'s "Dark Gothic / Eldritch Redesign" section for the
+full report). Live at https://mado9423-spec.github.io/dhamani/.
 
 ## What exists and works (verified this session)
 

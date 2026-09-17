@@ -5,6 +5,12 @@ import { clamp } from "../utils/MathUtils";
  * Applies a velocity (units/second) to a game object for one frame and
  * keeps it inside the given bounds. Kept as a standalone system (rather
  * than logic embedded in an entity) so future entities can reuse it.
+ *
+ * Deliberately does not rotate the target to face its velocity (the old
+ * "360-degree spinning arrow" look) — under the slanted 2.5D perspective,
+ * characters stay upright and face the camera, only flipping horizontally
+ * (scaleX = 1/-1) based on travel direction. See Player/Enemy's own
+ * `applyFacing`-style logic for that.
  */
 export class MovementSystem {
   static apply(
@@ -21,10 +27,5 @@ export class MovementSystem {
       clamp(nextX, bounds.x + halfSize, bounds.right - halfSize),
       clamp(nextY, bounds.y + halfSize, bounds.bottom - halfSize)
     );
-
-    if (velocity.lengthSq() > 0) {
-      const angle = Math.atan2(velocity.y, velocity.x) + Math.PI / 2;
-      target.setRotation(angle);
-    }
   }
 }

@@ -7,6 +7,24 @@ export const PROJECTILE_RADIUS = 5;
 export const PROJECTILE_MAX_DISTANCE = 440;
 export const PROJECTILE_POOL_SIZE = 40;
 
+// Weapon (a separate top-level GameObject that tracks the player's
+// position every frame, independent of the player's own facing-flip —
+// see entities/Weapon.ts for why it isn't a child of Player's Container).
+// Kept deliberately short (well inside the player's own BODY_RADIUS of
+// 18, not far beyond it): a projectile fired this frame also travels a
+// full frame's distance before collision is checked (see
+// CombatSystem.update()'s ordering), so a muzzle reach that eats too far
+// into an enemy's attackRange — especially the smallest, 33px on "fast"
+// — makes it possible to fire at a melee-range enemy and overshoot it
+// entirely in one step. A short reach keeps that risk close to what it
+// was when projectiles spawned exactly at the player's center, while
+// still visibly leaving the blade rather than the player's exact middle.
+export const WEAPON_MOUNT_DISTANCE = 6;
+export const WEAPON_LENGTH = 10;
+export const WEAPON_SWIVEL_SPEED = 14; // radians/sec angular-lerp rate toward the cursor
+export const WEAPON_RECOIL_DISTANCE = 9;
+export const WEAPON_RECOIL_RECOVER_MS = 130;
+
 // Hard floor on the delay between auto-fired shots (seconds), regardless
 // of how much attackSpeed has been upgraded. At MAX_UPGRADE_LEVEL (see
 // UpgradeConfig.ts) attack speed tops out around 9.3/sec (~107ms), so this

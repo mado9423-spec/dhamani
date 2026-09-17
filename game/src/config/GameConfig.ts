@@ -9,28 +9,46 @@ export const GAME_HEIGHT = 540;
 export const WORLD_WIDTH = GAME_WIDTH * 2.5;
 export const WORLD_HEIGHT = GAME_HEIGHT * 2.5;
 
+// Dark Gothic / Eldritch Arcade palette — deliberately low-saturation,
+// near-black bases with a few piercing accent colors (blood red, pale
+// sickly green/bone, tarnished gold) so those accents (eyes, glow,
+// sparks) read as genuinely piercing against the gloom rather than
+// competing with a busy palette.
 export const COLORS = {
-  background: 0x0d0f14,
-  gridLine: 0x1c2130,
-  player: 0x4fd1c5,
-  playerOutline: 0xe6fffb,
-  playerDamageFlash: 0xff4d4f,
-  playerDead: 0x555b6e,
-  healthBarBg: 0x2a1418,
-  healthBarFill: 0x4caf50,
-  healthBarFillDark: 0x2e7031,
-  healthBarFillLow: 0xff4d4f,
-  healthBarFillLowDark: 0xb23032,
-  xpBarBg: 0x1a1f2e,
-  xpBarFill: 0x4fd1c5,
-  xpBarFillDark: 0x2f8f86,
-  coin: 0xffd54f,
-  joystick: 0xffffff,
-  fireButton: 0xff6b6b,
+  // Environment
+  background: 0x0a0709,
+  gridLine: 0x190d10,
+
+  // Player — dark hooded wanderer
+  player: 0x2a2233,
+  playerOutline: 0x8f84a8,
+  playerEyeGlow: 0xff3b4d,
+  playerDamageFlash: 0xff3b4d,
+  playerDead: 0x120e17,
+
+  healthBarBg: 0x210a0d,
+  healthBarFill: 0x9c1f2e,
+  healthBarFillDark: 0x5c0f18,
+  healthBarFillLow: 0xff3b4d,
+  healthBarFillLowDark: 0xb81f2e,
+  xpBarBg: 0x14101d,
+  xpBarFill: 0x6a5a9c,
+  xpBarFillDark: 0x3a2f5c,
+
+  coin: 0xc9a44c,
+  joystick: 0xcfc6e0,
+  fireButton: 0xff3b4d,
   overlay: 0x000000,
-  projectile: 0x9ae6ff,
+
+  // Weaponry / projectiles — a dark energy bolt with a crimson core
+  projectile: 0xff3b4d,
+  projectileGlow: 0x6a1622,
+  muzzleSpark: 0xff5a3d,
+  smokeTrail: 0x241820,
+
   enemyHitFlash: 0xffffff,
-  xpPickup: 0x4fd1c5,
+  xpPickup: 0x6a5a9c,
+
   bossHealthFill: 0xb83280,
   bossHealthFillDark: 0x7a1f56,
   finalBossHealthFill: 0x7f1d1d,

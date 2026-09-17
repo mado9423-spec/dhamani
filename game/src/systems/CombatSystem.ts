@@ -42,14 +42,25 @@ export class CombatSystem {
     this.quality = quality;
     this.audio = audio;
     this.screenFx = screenFx;
-    this.projectileManager = new ProjectileManager(scene);
-    this.pickupManager = new PickupManager(scene);
     this.effectsManager = new EffectsManager(scene, quality);
+    this.projectileManager = new ProjectileManager(scene, (x, y) => this.effectsManager.spawnTrail(x, y));
+    this.pickupManager = new PickupManager(scene);
   }
 
   update(deltaSeconds: number, player: Player, worldBounds: Phaser.Geom.Rectangle): void {
-    this.handleAutoFire(deltaSeconds, player);
+    // Existing projectiles move first, *then* a new one may be fired —
+    // not the other way around. A projectile fired this frame is
+    // positioned at the weapon's muzzle tip (see handleAutoFire); if it
+    // also immediately took this same frame's movement step before
+    // collisions are checked, a single coarse frame (a slow device, or a
+    // melee-range enemy close enough that the muzzle offset plus one
+    // step of travel exceeds the hit tolerance) could skip clean over a
+    // point-blank enemy without ever having its position checked while
+    // still near the muzzle. Checking it at the muzzle first, and only
+    // moving it starting next frame, removes that tunneling risk instead
+    // of just narrowing it.
     this.projectileManager.update(deltaSeconds, worldBounds);
+    this.handleAutoFire(deltaSeconds, player);
     this.pickupManager.update(deltaSeconds, player);
     this.handleProjectileCollisions();
   }
@@ -70,7 +81,17 @@ export class CombatSystem {
     }
 
     this.scratchDirection.set(target.x - player.x, target.y - player.y).normalize();
-    this.projectileManager.fire(player.x, player.y, this.scratchDirection, PROJECTILE_SPEED, player.damage);
+
+    // The weapon visually aims wherever the cursor is (see Weapon.update,
+    // called every frame from Player.update) — firing snaps its recoil
+    // and hands back the muzzle tip's current world position, so the
+    // bolt visibly leaves the blade rather than the player's center. The
+    // bolt's own travel direction stays the actual combat target
+    // (nearest enemy) — the weapon's cursor-aim is presentation, not a
+    // change to auto-fire targeting.
+    const muzzle = player.weapon.triggerFire(this.scratchDirection);
+    this.projectileManager.fire(muzzle.x, muzzle.y, this.scratchDirection, PROJECTILE_SPEED, player.damage);
+    this.effectsManager.spawnMuzzleFlash(muzzle.x, muzzle.y, muzzle.angle);
     this.audio.play("fire");
     this.fireTimer = CombatSystem.fireIntervalFor(player.attackSpeed);
   }
@@ -117,7 +138,7 @@ export class CombatSystem {
     const isBoss = enemy.type === "boss" || enemy.type === "finalBoss";
     projectile.deactivate();
 
-    this.effectsManager.spawnHitEffect(enemy.x, enemy.y, COLORS.projectile);
+    this.effectsManager.spawnHitEffect(enemy.x, enemy.y, COLORS.muzzleSpark);
     this.effectsManager.spawnDamageNumber(enemy.x, enemy.y - enemy.radius, damage);
     this.audio.play("hit");
 

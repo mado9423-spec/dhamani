@@ -26,6 +26,22 @@ export class Background extends Phaser.GameObjects.TileSprite {
     graphics.fillRect(0, 0, TILE_SIZE, TILE_SIZE);
     graphics.lineStyle(1, COLORS.gridLine, 1);
     graphics.strokeRect(0, 0, TILE_SIZE, TILE_SIZE);
+
+    // A couple of faint, deterministic crack lines per tile — cheap
+    // (baked once into the generated texture, not drawn per frame) grime
+    // for the "grim environment" the floor is meant to anchor.
+    graphics.lineStyle(1, COLORS.gridLine, 0.6);
+    graphics.beginPath();
+    graphics.moveTo(8, 6);
+    graphics.lineTo(22, 18);
+    graphics.lineTo(16, 30);
+    graphics.strokePath();
+    graphics.beginPath();
+    graphics.moveTo(40, 44);
+    graphics.lineTo(50, 34);
+    graphics.lineTo(58, 40);
+    graphics.strokePath();
+
     graphics.generateTexture(TEXTURE_KEY, TILE_SIZE, TILE_SIZE);
     graphics.destroy();
   }

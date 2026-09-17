@@ -1,10 +1,11 @@
 # RELEASE_CHECKLIST.md — Survive: 7 Nights
 
 Launch checklist derived from `PROJECT_AUDIT.md`. Checked items are verified
-working. **Status: Release Candidate (visually overhauled) — every item
-below is done and verified; see `PROJECT_AUDIT.md`'s "Release Candidate
-Readiness" and "Visual Overhaul" sections for the full reports.** Last
-updated 2026-09-17 (visual-overhaul pass).
+working. **Status: Release Candidate (Dark Gothic / Eldritch redesign) —
+every item below is done and verified; see `PROJECT_AUDIT.md`'s "Release
+Candidate Readiness", "Visual Overhaul", and "Dark Gothic / Eldritch
+Redesign" sections for the full reports.** Last updated 2026-09-17 (Dark
+Gothic pass). Live at https://mado9423-spec.github.io/dhamani/.
 
 ## Blocking (must fix before any release)
 
@@ -144,6 +145,46 @@ updated 2026-09-17 (visual-overhaul pass).
       ~1-in-3 race condition (state change gated behind a tween's
       `onComplete`) inherited from the prior RC pass — fixed to transition
       state synchronously. Verified 8/8 and 6/6 repeated runs post-fix.
+
+## Dark Gothic / Eldritch redesign (this pass)
+
+- [x] **No more spinning-arrow facing.** `MovementSystem` no longer
+      rotates entities to face velocity; Player/Enemy flip `scaleX` on a
+      child `visualGroup` instead, leaving the outer Container (physics)
+      untouched.
+- [x] **Drop shadows** under Player and every Enemy (dark `Ellipse`,
+      alpha 0.6, fixed to the ground, independent of body bob/pulse).
+- [x] **Layered gothic art:** hooded-wanderer Player (cloak polygon, hood,
+      pulsing glowing eyes); slime-blob common enemies (asymmetric,
+      out-of-sync pulsing); arachnid fast/boss/finalBoss enemies
+      (4 genuinely multi-segmented, twitching limb rigs); procedural
+      walking bob on all moving entities.
+- [x] **Weapon.ts:** a separate top-level GameObject, smoothly swivels
+      toward the cursor, sharp recoil snap + eased return, pooled
+      `MuzzleFlash`/`ProjectileTrail` effects.
+- [x] **Darker environment + night ColorMatrix fix.** Grimmer floor tile;
+      fixed a real pre-existing bug where `ColorMatrix.brightness()`
+      immediately after `.saturate()` silently discarded the brightness
+      change (missing `multiply: true`); added a blood-vignette bias that
+      deepens with night progress. Verified via `getData()` and
+      screenshots — Night 7 is visibly, dramatically darker/redder than
+      Night 1.
+- [x] **Physics/visual decoupling verified.** `Enemy.radius` is a
+      dedicated field set from `EnemyConfig`'s numeric radius, provably
+      independent of the richer visuals. Playwright-verified exact match
+      per enemy type.
+- [x] **Bug found and fixed: bolt tunneling at melee range.** Spawning
+      projectiles from the weapon muzzle plus the pre-existing
+      fire-then-move-same-frame order let a shot skip clean over a
+      melee-range enemy. Fixed by moving existing projectiles before a
+      new one can fire (so it's collision-checked at the muzzle before it
+      ever moves) plus a shorter muzzle reach. Verified: two clean hits
+      where there were previously zero.
+- [x] **`npx tsc --noEmit` / `npm run build`** clean.
+- [x] **Deployed** via `npm run deploy` to the `gh-pages` branch — live at
+      https://mado9423-spec.github.io/dhamani/ (new build confirmed on the
+      branch and already served; `index.html` itself sits behind GitHub
+      Pages' ~10-minute CDN cache).
 
 ## Verified working (re-confirm after any of the above changes)
 

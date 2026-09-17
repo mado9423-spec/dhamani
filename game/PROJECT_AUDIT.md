@@ -640,6 +640,140 @@ clean full-suite Playwright run with zero console/page errors.
 
 ---
 
+## Dark Gothic / Eldritch Redesign (2026-09-17, Dark Gothic pass)
+
+Full authority was given to re-skin the player, enemies, weapon, and
+environment into a "Dark Gothic / Eldritch Arcade" aesthetic, replace the
+360° spinning-arrow facing mechanic with a slanted-2.5D flip, and deploy
+the result — all under the same zero-external-asset constraint as every
+prior pass. Report below in the requested **(Number / Title / Result)**
+format.
+
+### 1. Slanted 2.5D Perspective & Shadows — Result: done
+
+`MovementSystem.apply()` no longer calls `setRotation()` — the "spinning
+arrow" is gone. Player and Enemy both now track a `facing` value
+(`utils/VisualMotion.ts`'s `resolveFacing()`) from horizontal velocity and
+apply it as `scaleX = ±1` on a child `visualGroup` Container, never on the
+outer Container itself (which stays the untouched physics/collision
+transform). Both entities gained a heavy drop shadow — a dark
+(`0x000000`, alpha `0.6`) `Ellipse` anchored under the feet, sized/
+positioned per-entity in `spawn()`, living outside `visualGroup` so it
+stays glued to the ground while the body above it bobs/pulses.
+
+### 2. Gothic / Eldritch Layered Vector Art — Result: done
+
+- **Player:** `Player.ts`'s body is now a layered hooded-wanderer
+  silhouette — a jagged cloak `Polygon` (wide hem, narrow shoulders, two
+  torn "tatter" points), a darker overlapping hood `Ellipse`, and two
+  small `playerEyeGlow`-colored eyes that ambiently pulse (`pulseEyes()`,
+  a sine-driven alpha wave, always running — "piercing... peering from the
+  darkness").
+- **Common enemies (walker/tank):** `EnemyVisual.style = "slime"` — an
+  `Ellipse` blob whose `scaleX`/`scaleY` are driven by two independent,
+  out-of-phase sine waves (`Enemy.updatePulse()`), the asymmetric
+  breathing/pulsing the spec asked for.
+- **Fast/boss/finalBoss:** `style = "arachnid"` — 4 pre-built limb rigs,
+  each a nested `Container` pair (`pivot` → `upper` segment → `lowerPivot`
+  → `lower` segment), giving genuinely multi-segmented, bent legs. Only
+  visible for arachnid-style types; `updateLimbs()` twitches both joints
+  on independent sine waves, gated on `moving` (per spec: "twitch eerily
+  during movement").
+- **Walking bob:** `utils/VisualMotion.ts`'s `walkBob()` — a sine offset
+  on `visualGroup.y`, applied to both Player and Enemy, only while moving.
+
+### 3. Grim Weaponry & Combat FX — Result: done
+
+- `entities/Weapon.ts` is a new, separate top-level GameObject (not a
+  child of Player's Container — a child's local rotation would visually
+  mirror under Player's own facing-flip, which is exactly wrong for
+  "points directly at the cursor"). It re-anchors to the player's
+  position every frame and smoothly rotates toward the cursor via
+  `Phaser.Math.Angle.RotateTo`, not an instant snap.
+- **Recoil:** `Weapon.triggerFire()` snaps `recoilOffset` to
+  `WEAPON_RECOIL_DISTANCE` then tweens it back with a `Back.Out` ease —
+  a sharp backward snap, eased return.
+- **Muzzle flash / trails:** a new pooled `MuzzleFlash` (a jagged `Star`
+  shape in `COLORS.muzzleSpark`, crimson/ember) fires from the weapon's
+  muzzle tip on every shot; a new pooled `ProjectileTrail` leaves faint
+  dark-smoke dots behind every bolt, throttled to one per ~14px of travel
+  (not per frame) via a callback threaded through `ProjectileManager` →
+  `Projectile.update()`. The projectile itself became a small elongated
+  `Ellipse` "bolt" with a `projectileGlow`-colored outline, oriented to
+  its travel direction on `fire()`.
+
+### 4. Environmental Dark Contrast — Result: done, plus a real bug fixed
+
+`Background.ts`'s tile texture darkened to the new near-black
+`COLORS.background`/`gridLine` and gained two faint baked-in crack lines
+per tile. `ScreenFX.setNightLevel()` was extended with a per-channel
+additive "blood-vignette" bias (red up, green/blue down, scaled by night
+progress) composed on top of the existing brightness/saturation —
+**and, in verifying that composition, found and fixed a real pre-existing
+bug**: `ColorMatrix.brightness()`/`.saturate()` both default their second
+`multiply` argument to `false`, which *resets* the matrix rather than
+composing with it. The existing code called both without passing `true`,
+so — silently, since Night 1 was first introduced in the prior visual-
+overhaul pass — only the *last* call (`saturate`) ever had any visible
+effect; `brightness()`'s darkening was completely discarded every time.
+Fixed by passing `multiply: true` through the whole chain. Verified via
+`getData()`: by Night 7, brightness (`r_r` ≈ 0.41, down from an
+undiscounted 1.0), saturation, and the new blood bias are all
+simultaneously present in the final matrix — confirmed visually too (see
+verification screenshots).
+
+### 5. Verification & Deployment — Result: done, with two real bugs found and fixed along the way
+
+- **`npx tsc --noEmit` / `npm run build`:** clean throughout.
+- **Physics/visual alignment:** `Enemy.radius` now returns a dedicated
+  `hitRadius` field set in `spawn()` from `EnemyConfig`'s numeric
+  `visual.radius` — completely decoupled from whichever shapes happen to
+  be drawn — so collision math is provably unchanged from before this
+  pass. Verified via Playwright: `enemy.radius` matches
+  `EnemyConfig.getEnemyDefinition(type).visual.radius` exactly for every
+  type.
+- **Bug found #1 — bolt tunneling at melee range:** initial testing (a
+  synthetic, deterministic drive of `combatSystem.update()`, since this
+  sandbox's real frame pacing turned out to be too unreliable — see
+  below) found that spawning a projectile from the weapon's muzzle tip
+  (34px out) *and* still giving it that same frame's full movement step
+  before checking collisions (the pre-existing order) could let a shot at
+  a melee-range enemy sail clean past it in one step — a real regression
+  from the muzzle-spawn change, not present when projectiles spawned at
+  the player's exact center. Fixed two ways: `CombatSystem.update()` now
+  moves *existing* projectiles before a new one can be fired, so a bolt
+  fired this frame is collision-checked at its actual muzzle position
+  before it ever moves (removes the tunneling risk at its root, not just
+  narrows it); and the muzzle reach itself was shortened (34px → 16px,
+  inside the player's own `BODY_RADIUS`) as defense-in-depth. Verified:
+  a walker at 60px now takes two clean hits (30 → 20 → 0 hp) where it
+  previously took zero.
+- **Bug found #2 (this sandbox specifically) — real-time waits are
+  unreliable here:** this session's testing also found that `game.loop.
+  actualFps` decays steadily from ~46 to ~9 over the first ~10 seconds of
+  *any* session here, identically whether or not any of this pass's new
+  entities are on screen (confirmed with zero enemies spawned, flat
+  GameObject/tween counts throughout) — a software-WebGL-rendering
+  characteristic of this specific sandbox, not a leak in this pass's
+  code. Because of it, Phaser's own delta-time bookkeeping can fall far
+  behind wall-clock time, so a couple of this suite's checks (weapon-aim
+  convergence, "does combat still work") were rewritten to poll for the
+  actual outcome (or, for combat, to drive `combatSystem.update()`
+  directly with explicit `deltaSeconds` steps) rather than assume a fixed
+  wait is enough — which is what surfaced bug #1 in the first place.
+- **Pipeline leak check:** stable `camera.postPipelines` count across 3
+  repeated death→restart cycles — no leak from any of this pass's changes.
+- **Zero console/page errors** across the full Playwright suite.
+- **Deployed:** `npm run deploy` pushed the built `dist/` to the
+  `gh-pages` branch (verified via `git show origin/gh-pages:index.html`
+  referencing the new build's asset hashes). Live at
+  https://mado9423-spec.github.io/dhamani/ — GitHub's Pages CDN caches
+  `index.html` for up to 10 minutes, so the new build may take a few
+  minutes to become visible there even though it's already deployed and
+  the new JS bundle is already being served.
+
+---
+
 ## 1. Project Discovery (verified facts, not assumptions)
 
 - Stack: Phaser **3.90.0** installed (declared `^3.80.1`), TypeScript

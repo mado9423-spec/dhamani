@@ -3,26 +3,62 @@ import { COLORS } from "../config/GameConfig";
 import { EnemyDefinition, EnemyStats, EnemyTypeId, getEnemyDefinition } from "../config/EnemyConfig";
 import { clamp } from "../utils/MathUtils";
 import { isWebGLRenderer } from "../utils/RendererCapabilities";
+import { Facing, resolveFacing, walkBob } from "../utils/VisualMotion";
 import { Player } from "./Player";
 
 const HIT_FLASH_MS = 90;
 const DEATH_TWEEN_MS = 220;
+const BOB_AMPLITUDE = 1.6;
+const BOB_FREQUENCY_HZ = 2.6;
+const PULSE_FREQUENCY_HZ = 1.4;
+const PULSE_AMPLITUDE = 0.1;
+const TWITCH_FREQUENCY_HZ = 3.2;
+const LIMB_COUNT = 4;
+const LIMB_BASE_ANGLES = [-2.35, -0.8, 0.8, 2.35];
+const LIMB_BEND_BASE = 0.9;
+const LIMB_TWITCH_AMPLITUDE = 0.35;
+const LIMB_BEND_TWITCH_AMPLITUDE = 0.4;
+
+interface LimbRig {
+  pivot: Phaser.GameObjects.Container;
+  upper: Phaser.GameObjects.Rectangle;
+  lowerPivot: Phaser.GameObjects.Container;
+  lower: Phaser.GameObjects.Rectangle;
+}
 
 /**
  * Pooled enemy. spawn() re-configures an existing instance (type,
  * stats, visual, position) instead of creating a new GameObject, so a
- * fixed-size pool can be reused indefinitely. Only a circle shape is
- * used — walker/fast/tank are told apart by size and color.
+ * fixed-size pool can be reused indefinitely.
+ *
+ * Two visual styles (see EnemyConfig's EnemyVisualStyle): "slime" — an
+ * asymmetrically pulsing void blob (walker/tank) — and "arachnid" — a
+ * blob plus twitching multi-segmented limbs (fast/boss/finalBoss). Both
+ * share the same rig; slime just never shows its (pre-built, hidden)
+ * limbs. As with Player, `this.x`/`this.y` (the outer Container) is the
+ * one true physics/collision position — facing flip, bob, pulse, and
+ * limb twitch all live on `visualGroup`, a child Container, so the
+ * hitbox never moves with the presentation.
  */
 export class Enemy extends Phaser.GameObjects.Container {
   type: EnemyTypeId = "walker";
   readonly velocity = new Phaser.Math.Vector2();
 
   private stats: EnemyStats;
-  private readonly bodyShape: Phaser.GameObjects.Arc;
+  private hitRadius = 0;
+  private readonly shadow: Phaser.GameObjects.Ellipse;
+  private readonly visualGroup: Phaser.GameObjects.Container;
+  private readonly bodyBlob: Phaser.GameObjects.Ellipse;
+  private readonly eyeLeft: Phaser.GameObjects.Arc;
+  private readonly eyeRight: Phaser.GameObjects.Arc;
+  private readonly limbs: LimbRig[] = [];
   private attackTimer = 0;
   private dying = false;
   private readonly webgl: boolean;
+  private readonly phaseSeed = Math.random() * 1000;
+  private animTimeMs = 0;
+  private facing: Facing = 1;
+  private showLimbs = false;
   // Bumped every spawn(). A hit-flash's delayedCall captures this and
   // checks it still matches before touching this (pooled) instance, so
   // it can never revert the color of whatever this slot was reused for
@@ -37,17 +73,43 @@ export class Enemy extends Phaser.GameObjects.Container {
 
     const walker = getEnemyDefinition("walker");
     this.stats = { ...walker.stats };
-    this.bodyShape = scene.add.circle(0, 0, walker.visual.radius, walker.visual.color);
-    this.bodyShape.setStrokeStyle(walker.visual.strokeWidth, walker.visual.strokeColor);
 
-    this.add(this.bodyShape);
+    this.shadow = scene.add.ellipse(0, 0, 10, 4, 0x000000, 0.6);
+    this.visualGroup = scene.add.container(0, 0);
+
+    this.bodyBlob = scene.add.ellipse(0, 0, 20, 17, walker.visual.color);
+    this.bodyBlob.setStrokeStyle(walker.visual.strokeWidth, walker.visual.strokeColor);
+    this.eyeLeft = scene.add.circle(0, 0, 1.5, walker.visual.eyeColor);
+    this.eyeRight = scene.add.circle(0, 0, 1.5, walker.visual.eyeColor);
+
+    for (let i = 0; i < LIMB_COUNT; i += 1) {
+      this.limbs.push(Enemy.buildLimb(scene));
+    }
+
+    this.visualGroup.add([...this.limbs.map((limb) => limb.pivot), this.bodyBlob, this.eyeLeft, this.eyeRight]);
+    this.add([this.shadow, this.visualGroup]);
     scene.add.existing(this);
     this.setActive(false);
     this.setVisible(false);
   }
 
+  private static buildLimb(scene: Phaser.Scene): LimbRig {
+    const pivot = scene.add.container(0, 0);
+    const upper = scene.add.rectangle(0, 0, 10, 3, 0x000000);
+    upper.setOrigin(0, 0.5);
+
+    const lowerPivot = scene.add.container(0, 0);
+    const lower = scene.add.rectangle(0, 0, 8, 2.5, 0x000000);
+    lower.setOrigin(0, 0.5);
+
+    lowerPivot.add(lower);
+    pivot.add([upper, lowerPivot]);
+
+    return { pivot, upper, lowerPivot, lower };
+  }
+
   get radius(): number {
-    return this.bodyShape.radius;
+    return this.hitRadius;
   }
 
   get health(): number {
@@ -86,18 +148,61 @@ export class Enemy extends Phaser.GameObjects.Container {
     this.attackTimer = 0;
     this.dying = false;
 
-    this.bodyShape.setRadius(definition.visual.radius);
-    this.bodyShape.setFillStyle(definition.visual.color);
-    this.bodyShape.setStrokeStyle(definition.visual.strokeWidth, definition.visual.strokeColor);
-    this.setSize(definition.visual.radius * 2, definition.visual.radius * 2);
+    const radius = definition.visual.radius;
+    this.hitRadius = radius;
+
+    this.shadow.setSize(radius * 1.6, radius * 0.55);
+    this.shadow.setPosition(0, radius * 0.85);
+
+    this.bodyBlob.setSize(radius * 2, radius * 1.75);
+    this.bodyBlob.setFillStyle(definition.visual.color);
+    this.bodyBlob.setStrokeStyle(definition.visual.strokeWidth, definition.visual.strokeColor);
+    this.eyeLeft.setFillStyle(definition.visual.eyeColor);
+    this.eyeRight.setFillStyle(definition.visual.eyeColor);
+    this.eyeLeft.setPosition(-radius * 0.28, -radius * 0.15);
+    this.eyeRight.setPosition(radius * 0.28, -radius * 0.15);
+    this.eyeLeft.setRadius(Math.max(1.2, radius * 0.09));
+    this.eyeRight.setRadius(Math.max(1.2, radius * 0.09));
+
+    this.showLimbs = definition.visual.style === "arachnid";
+    this.configureLimbs(radius, definition.visual.limbColor);
+
+    this.setSize(radius * 2, radius * 2);
     this.applyBossGlow(type, definition.visual.color);
 
     this.setPosition(x, y);
     this.setScale(1);
+    this.visualGroup.setScale(1, 1);
+    this.visualGroup.setPosition(0, 0);
+    this.facing = 1;
     this.setAlpha(1);
     this.velocity.set(0, 0);
     this.setActive(true);
     this.setVisible(true);
+  }
+
+  private configureLimbs(radius: number, limbColor: number): void {
+    const upperLength = radius * 0.85;
+    const lowerLength = radius * 0.65;
+    const thickness = Math.max(1.5, radius * 0.09);
+
+    this.limbs.forEach((limb, i) => {
+      limb.pivot.setVisible(this.showLimbs);
+      if (!this.showLimbs) {
+        return;
+      }
+
+      const baseAngle = LIMB_BASE_ANGLES[i];
+      limb.pivot.setPosition(Math.cos(baseAngle) * radius * 0.6, Math.sin(baseAngle) * radius * 0.42);
+      limb.pivot.setRotation(baseAngle);
+
+      limb.upper.setSize(upperLength, thickness);
+      limb.upper.setFillStyle(limbColor);
+      limb.lowerPivot.setPosition(upperLength, 0);
+      limb.lowerPivot.setRotation(LIMB_BEND_BASE);
+      limb.lower.setSize(lowerLength, thickness * 0.85);
+      limb.lower.setFillStyle(limbColor);
+    });
   }
 
   /**
@@ -110,16 +215,22 @@ export class Enemy extends Phaser.GameObjects.Container {
       return;
     }
 
+    this.animTimeMs += deltaSeconds * 1000;
+    this.updatePulse();
+
     if (target.isDead) {
       this.velocity.set(0, 0);
+      this.updateLimbs(false);
       return;
     }
 
     const dx = target.x - this.x;
     const dy = target.y - this.y;
     const distance = Math.hypot(dx, dy);
+    let moving = false;
 
     if (distance > this.stats.attackRange) {
+      moving = true;
       const directionX = dx / distance;
       const directionY = dy / distance;
       const travel = Math.min(this.stats.speed * deltaSeconds, distance - this.stats.attackRange);
@@ -131,6 +242,8 @@ export class Enemy extends Phaser.GameObjects.Container {
       );
 
       this.attackTimer = Math.max(0, this.attackTimer - deltaSeconds);
+      this.facing = resolveFacing(directionX, this.facing);
+      this.visualGroup.scaleX = this.facing;
     } else {
       this.velocity.set(0, 0);
       this.attackTimer -= deltaSeconds;
@@ -139,6 +252,35 @@ export class Enemy extends Phaser.GameObjects.Container {
         target.takeDamage(this.stats.damage);
       }
     }
+
+    this.visualGroup.y = walkBob(this.animTimeMs + this.phaseSeed, moving, BOB_AMPLITUDE, BOB_FREQUENCY_HZ);
+    this.updateLimbs(moving);
+  }
+
+  /** Asymmetric, out-of-sync breathing — always running, the "unstable void slime" look. */
+  private updatePulse(): void {
+    const t = this.animTimeMs / 1000;
+    const scaleX = 1 + Math.sin(t * PULSE_FREQUENCY_HZ + this.phaseSeed) * PULSE_AMPLITUDE;
+    const scaleY = 1 + Math.sin(t * PULSE_FREQUENCY_HZ * 1.3 + this.phaseSeed * 1.7 + 1.1) * PULSE_AMPLITUDE;
+    this.bodyBlob.setScale(scaleX, scaleY);
+  }
+
+  /** Eerie multi-joint twitch on each limb, only while actually moving. */
+  private updateLimbs(moving: boolean): void {
+    if (!this.showLimbs) {
+      return;
+    }
+
+    const t = this.animTimeMs / 1000;
+    this.limbs.forEach((limb, i) => {
+      const base = LIMB_BASE_ANGLES[i];
+      const twitch = moving ? Math.sin(t * TWITCH_FREQUENCY_HZ + this.phaseSeed + i * 1.3) * LIMB_TWITCH_AMPLITUDE : 0;
+      const bendTwitch = moving
+        ? Math.sin(t * TWITCH_FREQUENCY_HZ * 1.4 + this.phaseSeed + i * 0.7) * LIMB_BEND_TWITCH_AMPLITUDE
+        : 0;
+      limb.pivot.setRotation(base + twitch);
+      limb.lowerPivot.setRotation(LIMB_BEND_BASE + bendTwitch);
+    });
   }
 
   /** Returns true if this hit killed the enemy. */
@@ -180,13 +322,13 @@ export class Enemy extends Phaser.GameObjects.Container {
   }
 
   private playHitFlash(): void {
-    this.bodyShape.setFillStyle(COLORS.enemyHitFlash);
+    this.bodyBlob.setFillStyle(COLORS.enemyHitFlash);
     const originalColor = getEnemyDefinition(this.type).visual.color;
     const flashLifeId = this.lifeId;
 
     this.scene.time.delayedCall(HIT_FLASH_MS, () => {
       if (this.active && !this.dying && this.lifeId === flashLifeId) {
-        this.bodyShape.setFillStyle(originalColor);
+        this.bodyBlob.setFillStyle(originalColor);
       }
     });
   }
@@ -196,7 +338,12 @@ export class Enemy extends Phaser.GameObjects.Container {
     this.velocity.set(0, 0);
 
     // Stays "active" (so the pool won't reuse it) until the shrink/fade
-    // animation finishes, then it's released back to the pool.
+    // animation finishes, then it's released back to the pool. Targets
+    // `this` (the whole outer Container, shadow included) — unlike the
+    // damage punch, a dying enemy no longer needs its hitbox to stay
+    // authoritative (takeDamage/collision already stop touching it via
+    // the `dying` guard above), so collapsing everything together,
+    // shadow included, reads better than leaving a shadow behind.
     this.scene.tweens.add({
       targets: this,
       scale: 0,
@@ -206,6 +353,7 @@ export class Enemy extends Phaser.GameObjects.Container {
       onComplete: () => {
         this.setActive(false);
         this.setVisible(false);
+        this.setScale(1);
         this.dying = false;
       },
     });

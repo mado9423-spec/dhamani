@@ -107,10 +107,17 @@ export class ScreenFX {
   }
 
   /**
-   * Progressive atmosphere: darker and colder as the campaign's nights
-   * progress. `t` is 0 at Night 1, 1 at Night 7 (and beyond, for the
-   * post-campaign/victory state) — see MainScene for how it's derived
-   * from the current night index.
+   * Progressive atmosphere: darker, colder, and more blood-tinted as the
+   * campaign's nights progress. `t` is 0 at Night 1, 1 at Night 7 (and
+   * beyond, for the post-campaign/victory state) — see MainScene for how
+   * it's derived from the current night index.
+   *
+   * Each ColorMatrix preset method (brightness/saturate/…) defaults to
+   * *replacing* the matrix, not composing with it — its second `multiply`
+   * argument has to be explicitly `true` to stack onto whatever's already
+   * there. Passing it here matters: without it, only the last call below
+   * would have any visible effect at all, silently discarding the ones
+   * before it every time this runs.
    */
   setNightLevel(t: number): void {
     if (!this.colorMatrix) {
@@ -119,8 +126,29 @@ export class ScreenFX {
 
     const clamped = Phaser.Math.Clamp(t, 0, 1);
     this.colorMatrix.reset();
-    this.colorMatrix.brightness(1 - 0.28 * clamped);
-    this.colorMatrix.saturate(-0.4 * clamped);
+    this.colorMatrix.brightness(1 - 0.35 * clamped, true);
+    this.colorMatrix.saturate(-0.55 * clamped, true);
+
+    // A blood-vignette push: a per-channel additive bias (0-255 scale,
+    // per Phaser's ColorMatrix convention — see getData()) that nudges
+    // red up and green/blue down, composed on top of the brightness/
+    // saturation above via the same multiply=true chain. Composing onto
+    // an already-darkened matrix scales this bias down by that matrix's
+    // own (now well below 1) channel coefficients — verified via
+    // getData(), a raw 22 here only nets a barely-there +0.02 on the
+    // final red channel by Night 7 — so the raw push is deliberately
+    // well above the nominal "0-255" feel of the number to land as an
+    // actually-visible warm tint once that scaling is accounted for.
+    const bloodPush = 55 * clamped;
+    this.colorMatrix.multiply(
+      [
+        1, 0, 0, 0, bloodPush,
+        0, 1, 0, 0, -bloodPush * 0.7,
+        0, 0, 1, 0, -bloodPush * 0.85,
+        0, 0, 0, 1, 0,
+      ],
+      true
+    );
   }
 
   destroy(): void {
@@ -152,7 +180,7 @@ export class ScreenFX {
     // for the whole Game's lifetime).
     renderer.pipelines.addPostPipeline(ImpactFXPipeline.PIPELINE_NAME, ImpactFXPipeline);
 
-    this.camera.postFX.addVignette(0.5, 0.5, 0.8, 0.35);
+    this.camera.postFX.addVignette(0.5, 0.5, 0.72, 0.45);
     this.colorMatrix = this.camera.postFX.addColorMatrix();
     this.camera.setPostPipeline(ImpactFXPipeline.PIPELINE_NAME);
     this.impactPipeline = this.camera.getPostPipeline(ImpactFXPipeline.PIPELINE_NAME) as ImpactFXPipeline;
