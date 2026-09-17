@@ -1,4 +1,5 @@
 import Phaser from "phaser";
+import { isBenignAudioDecodeRejection } from "./audio/AudioManager";
 import { createGameConfig } from "./config/GameConfig";
 import { QUALITY_PRESETS, QUALITY_REGISTRY_KEY } from "./config/QualityConfig";
 import { BootScene } from "./scenes/BootScene";
@@ -35,7 +36,20 @@ function showBootError(): void {
 }
 
 window.addEventListener("error", showBootError);
-window.addEventListener("unhandledrejection", showBootError);
+window.addEventListener("unhandledrejection", (event) => {
+  // One specific, known-benign rejection is expected and must not be
+  // fatal: attempting to load optional background music when the files
+  // aren't there yet (this project's actual current, zero-asset state)
+  // triggers a real browser/Phaser quirk — see
+  // AudioManager.isBenignAudioDecodeRejection()'s doc comment for why —
+  // and AudioManager's own cache-existence check already degrades
+  // gracefully (no music, everything else unaffected) regardless of this
+  // event. Everything else stays fatal, same as before.
+  if (isBenignAudioDecodeRejection(event.reason)) {
+    return;
+  }
+  showBootError();
+});
 
 document.getElementById("boot-error-reload")?.addEventListener("click", () => {
   window.location.reload();

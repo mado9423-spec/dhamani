@@ -72,6 +72,10 @@ export class MainScene extends Phaser.Scene {
     super("MainScene");
   }
 
+  preload(): void {
+    AudioManager.preloadMusic(this);
+  }
+
   create(): void {
     const qualityLevel = (this.registry.get(QUALITY_REGISTRY_KEY) as QualityLevel | undefined) ?? "medium";
     const quality = QUALITY_PRESETS[qualityLevel];
@@ -80,6 +84,7 @@ export class MainScene extends Phaser.Scene {
     this.saveData = { ...SaveManager.get<SaveData>(SAVE_KEY, DEFAULT_SAVE_DATA) };
 
     this.audioManager = new AudioManager(this);
+    this.audioManager.playAmbient();
     this.screenFx = new ScreenFX(this);
 
     new Background(this, WORLD_WIDTH, WORLD_HEIGHT);
@@ -139,6 +144,7 @@ export class MainScene extends Phaser.Scene {
       this.pauseOverlay.destroy();
       this.inputManager.destroy();
       this.screenFx.destroy();
+      this.audioManager.destroyMusic();
     });
   }
 
@@ -257,12 +263,17 @@ export class MainScene extends Phaser.Scene {
       this.hud.setWaveStatus(`Night ${nightNumber} · ${isFinalNight ? "FINAL BOSS" : "BOSS"}`);
       this.bossHealthBar.show(isFinalNight);
       this.audioManager.play("bossStart");
+      this.audioManager.playBossMusic();
       this.screenFx.flash(COLORS.bossHealthFill, 0.18, 350);
       this.screenFx.pulseImpact(0.4, 400);
     });
 
     this.nightManager.on(NightManagerEvents.NIGHT_COMPLETE, ({ nightNumber, isFinalNight }: NightCompletePayload) => {
       this.bossHealthBar.hide();
+      // Every NIGHT_COMPLETE follows a boss kill — always return to the
+      // ambient bed here, victory included (playAmbient() is a no-op if
+      // the ambient track never loaded, same as the boss track was).
+      this.audioManager.playAmbient();
       this.persistBestNight(nightNumber, isFinalNight);
 
       // Every NIGHT_COMPLETE follows a boss kill — celebrate it at the
