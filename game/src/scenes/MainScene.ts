@@ -36,6 +36,7 @@ export class MainScene extends Phaser.Scene {
   enemyManager!: EnemyManager;
   combatSystem!: CombatSystem;
   nightManager!: NightManager;
+  private background!: Background;
   private inputManager!: InputManager;
   private hud!: HUD;
   private deathScreen!: DeathScreen;
@@ -87,7 +88,7 @@ export class MainScene extends Phaser.Scene {
     this.audioManager.playAmbient();
     this.screenFx = new ScreenFX(this);
 
-    new Background(this, WORLD_WIDTH, WORLD_HEIGHT);
+    this.background = new Background(this, WORLD_WIDTH, WORLD_HEIGHT);
 
     this.player = new Player(this, WORLD_WIDTH / 2, WORLD_HEIGHT / 2, quality, this.audioManager, this.screenFx);
     this.inputManager = new InputManager(this, safeAreaInsets);
@@ -275,8 +276,14 @@ export class MainScene extends Phaser.Scene {
       this.hud.setWaveStatus(`Night ${nightNumber} · Wave ${waveNumber}/${totalWaves}`);
       this.audioManager.play("waveStart");
       // Atmosphere darkens/cools progressively across the campaign: 0 at
-      // Night 1, 1 by Night 7.
-      this.screenFx.setNightLevel((nightNumber - 1) / (NIGHTS.length - 1));
+      // Night 1, 1 by Night 7. Applied to both the camera-level
+      // post-processing (ScreenFX) and the background's own floor/decor
+      // tint (Background) — the two are independent, deliberately
+      // redundant effects (see Background.setNightLevel's doc comment),
+      // not one driving the other.
+      const nightLevel = (nightNumber - 1) / (NIGHTS.length - 1);
+      this.screenFx.setNightLevel(nightLevel);
+      this.background.setNightLevel(nightLevel);
     });
 
     this.nightManager.on(NightManagerEvents.BOSS_INTRO, ({ nightNumber, isFinalNight }: BossIntroPayload) => {
