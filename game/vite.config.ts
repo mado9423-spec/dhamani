@@ -2,6 +2,11 @@ import { defineConfig } from "vite";
 
 export default defineConfig({
   root: ".",
+  // Served as a GitHub Pages *project* site (mado9423-spec.github.io/dhamani/),
+  // not from the domain root — every built asset path needs this prefix or
+  // they 404 once deployed. Doesn't affect `vite`/`vite preview`, which
+  // both still work from "/" locally.
+  base: "/dhamani/",
   // Prevent Vite from searching parent directories and picking up the
   // sibling "dhamani" app's postcss/tailwind config (this project has
   // none of its own).

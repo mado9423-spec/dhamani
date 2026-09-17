@@ -4,18 +4,22 @@
   "version": "0.1.0",
   "type": "module",
   "description": "Survive: 7 Nights — a 2D top-down survival shooter built with Phaser, TypeScript, and Vite.",
+  "homepage": "https://mado9423-spec.github.io/dhamani",
   "engines": {
     "node": ">=20.0.0"
   },
   "scripts": {
     "dev": "vite",
     "build": "tsc --noEmit && vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "predeploy": "npm run build",
+    "deploy": "gh-pages -d dist"
   },
   "dependencies": {
     "phaser": "^3.80.1"
   },
   "devDependencies": {
+    "gh-pages": "^6.3.0",
     "typescript": "^5.5.3",
     "vite": "^5.4.0"
   }
