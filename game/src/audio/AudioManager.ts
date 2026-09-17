@@ -30,6 +30,33 @@ const MUSIC_PATHS = {
 
 const AMBIENT_VOLUME = 0.35;
 const BOSS_VOLUME = 0.5;
+const SFX_FILE_VOLUME = 0.5;
+
+// One-shot SFX real-file overrides — checked per SfxId, independent of
+// each other. Every id below has a corresponding oscillator case in
+// play()'s switch statement (see the bottom of this class); that code
+// is the permanent fallback for whichever ids don't have a real file,
+// not dead code being phased out.
+const SFX_IDS: readonly SfxId[] = [
+  "fire",
+  "hit",
+  "enemyDeath",
+  "playerDamage",
+  "playerDeath",
+  "levelUp",
+  "upgradePick",
+  "waveStart",
+  "bossStart",
+  "victory",
+];
+
+function sfxKey(id: SfxId): string {
+  return `sfx-${id}`;
+}
+
+function sfxPath(id: SfxId): string {
+  return `assets/audio/sfx/${id}.mp3`;
+}
 
 /**
  * True for the specific, known-benign failure this project's music
@@ -57,17 +84,20 @@ export function isBenignAudioDecodeRejection(reason: unknown): boolean {
 }
 
 /**
- * Synthesizes short SFX procedurally via the Web Audio API instead of
- * loading audio assets (every one-shot sound here is a few scheduled
- * oscillator envelopes, and none need a sample). Reuses Phaser's own
- * already-unlocked AudioContext (via WebAudioSoundManager) rather than
- * creating a second, separately-suspended one that would need its own
- * gesture-unlock handling. Silently no-ops if Web Audio isn't available
- * in this browser — matches the project's existing safe-no-op pattern
- * for optional platform features (SaveManager, the sprite-asset fallback
- * in BootScene).
+ * Plays a real SFX file per SfxId when one actually loaded
+ * (`public/assets/audio/sfx/<id>.mp3`), and synthesizes it procedurally
+ * via the Web Audio API otherwise — this project shipped with zero
+ * external assets throughout, so every one-shot sound started as a few
+ * scheduled oscillator envelopes needing no sample, and that fallback
+ * stays permanent, not just until real files show up. The oscillator
+ * path reuses Phaser's own already-unlocked AudioContext (via
+ * WebAudioSoundManager) rather than creating a second, separately-
+ * suspended one that would need its own gesture-unlock handling, and
+ * silently no-ops if Web Audio isn't available in this browser — matches
+ * the project's existing safe-no-op pattern for optional platform
+ * features (SaveManager, the sprite-asset fallback in BootScene).
  *
- * Every scheduled SFX node is a one-shot oscillator/gain pair that stops
+ * Every scheduled oscillator SFX node is a one-shot oscillator/gain pair that stops
  * itself and is released by the browser once finished — nothing there
  * persists across frames or needs explicit teardown. Background music is
  * different: it's a long-lived, looping Phaser Sound instance, so unlike
@@ -75,31 +105,43 @@ export function isBenignAudioDecodeRejection(reason: unknown): boolean {
  * MainScene's scene-shutdown handler.
  */
 export class AudioManager {
+  private readonly scene: Phaser.Scene;
   private readonly context: AudioContext | null;
   private readonly ambientTrack: Phaser.Sound.BaseSound | null;
   private readonly bossTrack: Phaser.Sound.BaseSound | null;
+  // Which SfxId's each have a real, successfully-loaded file — checked
+  // once here (scene.cache.audio.exists() again, not a load-error event;
+  // same reasoning as the music tracks above), read every play() call to
+  // decide real file vs. oscillator fallback.
+  private readonly realSfxIds: ReadonlySet<SfxId>;
 
   constructor(scene: Phaser.Scene) {
+    this.scene = scene;
     const sound = scene.sound;
     this.context = sound instanceof Phaser.Sound.WebAudioSoundManager ? sound.context : null;
 
     this.ambientTrack = AudioManager.createMusicTrack(scene, MUSIC_KEYS.ambient, AMBIENT_VOLUME);
     this.bossTrack = AudioManager.createMusicTrack(scene, MUSIC_KEYS.boss, BOSS_VOLUME);
+    this.realSfxIds = new Set(SFX_IDS.filter((id) => scene.cache.audio.exists(sfxKey(id))));
   }
 
   /**
-   * Queues both music tracks for loading — call from the scene's
-   * preload(). Missing files never break the load: Phaser's loader keeps
-   * going regardless (same as the sprite sheets in BootScene), and
-   * createMusicTrack() below checks the *actual* outcome afterward via
-   * `scene.cache.audio.exists()` rather than trusting a load-error event
-   * — the same fix that was needed for sprite sheets applies here too
-   * (a dev server can answer a missing file with a 200 of the wrong
-   * content type instead of a real 404).
+   * Queues the music tracks and every one-shot SFX file for loading —
+   * call from the scene's preload(). Missing files never break the
+   * load: Phaser's loader keeps going regardless (same as the sprite
+   * sheets in BootScene), and both createMusicTrack() and the
+   * `realSfxIds` check above check the *actual* outcome afterward via
+   * `scene.cache.*.exists()` rather than trusting a load-error event —
+   * the same fix that was needed for sprite sheets applies here too (a
+   * dev server can answer a missing file with a 200 of the wrong content
+   * type instead of a real 404).
    */
-  static preloadMusic(scene: Phaser.Scene): void {
+  static preloadAudio(scene: Phaser.Scene): void {
     scene.load.audio(MUSIC_KEYS.ambient, MUSIC_PATHS.ambient);
     scene.load.audio(MUSIC_KEYS.boss, MUSIC_PATHS.boss);
+    for (const id of SFX_IDS) {
+      scene.load.audio(sfxKey(id), sfxPath(id));
+    }
   }
 
   private static createMusicTrack(scene: Phaser.Scene, key: string, volume: number): Phaser.Sound.BaseSound | null {
@@ -142,7 +184,26 @@ export class AudioManager {
     this.bossTrack?.destroy();
   }
 
+  /**
+   * Tries a real file first (`public/assets/audio/sfx/<id>.mp3`); if
+   * that id never loaded, falls back to the existing oscillator
+   * synthesis below — that code stays the permanent fallback, not dead
+   * code kept temporarily. The real-file path goes through Phaser's own
+   * `scene.sound.play()` (a fire-and-forget helper: it creates a
+   * one-shot Sound instance, plays it, and releases it on completion),
+   * not a single persistent instance — matching the oscillator path's
+   * behavior of overlapping cleanly on rapid retriggers (e.g. "fire" at
+   * a high attack speed) instead of one shot cutting the previous one
+   * off. Unlike the oscillator fallback, this path doesn't need
+   * `this.context` — Phaser's SoundManager already safely no-ops on its
+   * own if Web Audio isn't available.
+   */
   play(id: SfxId): void {
+    if (this.realSfxIds.has(id)) {
+      this.scene.sound.play(sfxKey(id), { volume: SFX_FILE_VOLUME });
+      return;
+    }
+
     if (!this.context) {
       return;
     }

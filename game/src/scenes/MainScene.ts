@@ -73,7 +73,7 @@ export class MainScene extends Phaser.Scene {
   }
 
   preload(): void {
-    AudioManager.preloadMusic(this);
+    AudioManager.preloadAudio(this);
   }
 
   create(): void {
