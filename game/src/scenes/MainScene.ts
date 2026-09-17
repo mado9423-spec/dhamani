@@ -1,5 +1,5 @@
 import Phaser from "phaser";
-import { AudioManager } from "../audio/AudioManager";
+import { AudioManager, DANGER_PROXIMITY_RADIUS } from "../audio/AudioManager";
 import { GAME_HEIGHT, GAME_WIDTH, WORLD_HEIGHT, WORLD_WIDTH, COLORS } from "../config/GameConfig";
 import { NIGHTS } from "../config/NightConfig";
 import { QUALITY_PRESETS, QUALITY_REGISTRY_KEY, QualityLevel, QualitySettings } from "../config/QualityConfig";
@@ -160,11 +160,36 @@ export class MainScene extends Phaser.Scene {
     this.enemyManager.update(deltaSeconds, this.player, this.worldBounds);
     this.combatSystem.update(deltaSeconds, this.player, this.worldBounds);
     this.nightManager.update(deltaSeconds, this.player, this.worldBounds);
+    this.updateProximityDanger();
 
     const bossHealth = this.nightManager.getBossHealth();
     if (bossHealth) {
       this.bossHealthBar.update(bossHealth.health, bossHealth.maxHealth);
     }
+  }
+
+  /**
+   * Counts active enemies within DANGER_PROXIMITY_RADIUS of the player and
+   * hands the count to AudioManager, which owns the actual once-per-swarm
+   * trigger logic (see maybePlayProximityDanger()). Lives here rather than
+   * on Enemy/EnemyManager since it needs the player position plus the full
+   * active-enemy set together, and EnemyManager already exposes exactly
+   * that via forEachActive() without introducing an Enemy -> EnemyManager
+   * import cycle.
+   */
+  private updateProximityDanger(): void {
+    const radiusSq = DANGER_PROXIMITY_RADIUS * DANGER_PROXIMITY_RADIUS;
+    let nearbyCount = 0;
+
+    this.enemyManager.forEachActive((enemy) => {
+      const dx = enemy.x - this.player.x;
+      const dy = enemy.y - this.player.y;
+      if (dx * dx + dy * dy <= radiusSq) {
+        nearbyCount += 1;
+      }
+    });
+
+    this.audioManager.maybePlayProximityDanger(nearbyCount);
   }
 
   private currentSafeAreaInsets(): SafeAreaInsets {
@@ -263,6 +288,7 @@ export class MainScene extends Phaser.Scene {
       this.hud.setWaveStatus(`Night ${nightNumber} · ${isFinalNight ? "FINAL BOSS" : "BOSS"}`);
       this.bossHealthBar.show(isFinalNight);
       this.audioManager.play("bossStart");
+      this.audioManager.play("danger");
       this.audioManager.playBossMusic();
       this.screenFx.flash(COLORS.bossHealthFill, 0.18, 350);
       this.screenFx.pulseImpact(0.4, 400);

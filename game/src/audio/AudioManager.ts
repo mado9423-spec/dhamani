@@ -10,7 +10,8 @@ export type SfxId =
   | "upgradePick"
   | "waveStart"
   | "bossStart"
-  | "victory";
+  | "victory"
+  | "danger";
 
 // Background music — unlike the procedural SFX below, these are real
 // audio files, since a convincing ambient bed/boss theme isn't something
@@ -32,11 +33,34 @@ const AMBIENT_VOLUME = 0.35;
 const BOSS_VOLUME = 0.5;
 const SFX_FILE_VOLUME = 0.5;
 
+// Base oscillator frequencies for the two ids that get pitch
+// randomization (see PITCH_VARIANT_IDS below) — pulled out of their
+// blip() calls so the random factor has a fixed center to multiply.
+const FIRE_BASE_FREQ = 760;
+const HIT_BASE_FREQ = 220;
+
+// ±10% random pitch on every play() — "fire" and "hit" specifically,
+// since those are the two ids a normal run retriggers rapidly and
+// repeatedly (auto-fire, every projectile hit), where an identical tone
+// every single time reads as flat/robotic. Applies uniformly to both the
+// oscillator fallback (randomizes the base frequency) and a real SFX
+// file (randomizes Phaser's sound `rate` — real playback-rate pitch
+// shifting isn't available for a fire-and-forget sample without extra
+// DSP, and rate is the standard cheap approximation).
+const PITCH_VARIANT_IDS: ReadonlySet<SfxId> = new Set(["fire", "hit"]);
+const PITCH_VARIANCE = 0.1;
+
+function randomPitchFactor(): number {
+  return 1 + (Math.random() * 2 - 1) * PITCH_VARIANCE;
+}
+
 // One-shot SFX real-file overrides — checked per SfxId, independent of
 // each other. Every id below has a corresponding oscillator case in
 // play()'s switch statement (see the bottom of this class); that code
 // is the permanent fallback for whichever ids don't have a real file,
-// not dead code being phased out.
+// not dead code being phased out. "danger" is deliberately not in this
+// list — it's a rare, purely-synthesized alarm cue, not something worth
+// a real-file slot for.
 const SFX_IDS: readonly SfxId[] = [
   "fire",
   "hit",
@@ -57,6 +81,18 @@ function sfxKey(id: SfxId): string {
 function sfxPath(id: SfxId): string {
   return `assets/audio/sfx/${id}.mp3`;
 }
+
+// "Danger" trigger tuning — how close counts as "nearby" and how many
+// nearby enemies counts as a swarm. Exported so the per-frame proximity
+// check (MainScene.update(), via EnemyManager.forEachActive() — the
+// player + full enemy list aren't something a single pooled Enemy
+// instance has on its own) can share the exact same radius/threshold
+// AudioManager itself reasons about in maybePlayProximityDanger()'s doc
+// comment. 220px sits well above any common enemy's attackRange (33-46)
+// but well inside PLAYER_FIRE_RANGE (380) — "several enemies closing in
+// fast," not merely "an enemy exists somewhere on screen."
+export const DANGER_PROXIMITY_RADIUS = 220;
+export const DANGER_ENEMY_THRESHOLD = 5;
 
 /**
  * True for the specific, known-benign failure this project's music
@@ -114,6 +150,9 @@ export class AudioManager {
   // same reasoning as the music tracks above), read every play() call to
   // decide real file vs. oscillator fallback.
   private readonly realSfxIds: ReadonlySet<SfxId>;
+  // Rising-edge state for the proximity "danger" trigger — see
+  // maybePlayProximityDanger().
+  private dangerActive = false;
 
   constructor(scene: Phaser.Scene) {
     this.scene = scene;
@@ -185,6 +224,29 @@ export class AudioManager {
   }
 
   /**
+   * Call periodically (once per frame is fine — see MainScene.update(),
+   * which counts nearby enemies via EnemyManager.forEachActive(); a
+   * single pooled Enemy instance has no way to know how many siblings
+   * are nearby on its own) with the current count of active enemies
+   * within DANGER_PROXIMITY_RADIUS of the player. Plays the "danger"
+   * alarm on the rising edge only — the first
+   * call where the count reaches DANGER_ENEMY_THRESHOLD — then stays
+   * quiet on every subsequent call while the swarm persists. Resets once
+   * the count drops back below the threshold, so a later swarm can
+   * trigger it again.
+   */
+  maybePlayProximityDanger(nearbyEnemyCount: number): void {
+    const isDangerous = nearbyEnemyCount >= DANGER_ENEMY_THRESHOLD;
+
+    if (isDangerous && !this.dangerActive) {
+      this.dangerActive = true;
+      this.play("danger");
+    } else if (!isDangerous) {
+      this.dangerActive = false;
+    }
+  }
+
+  /**
    * Tries a real file first (`public/assets/audio/sfx/<id>.mp3`); if
    * that id never loaded, falls back to the existing oscillator
    * synthesis below — that code stays the permanent fallback, not dead
@@ -197,10 +259,18 @@ export class AudioManager {
    * off. Unlike the oscillator fallback, this path doesn't need
    * `this.context` — Phaser's SoundManager already safely no-ops on its
    * own if Web Audio isn't available.
+   *
+   * "fire" and "hit" additionally get a random ±10% pitch factor every
+   * call (PITCH_VARIANT_IDS) — applied to the oscillator's base
+   * frequency on the fallback path, and to Phaser's `rate` playback-speed
+   * config on the real-file path, so rapid repeats of either (auto-fire,
+   * every projectile hit) don't sound identically flat every time.
    */
   play(id: SfxId): void {
+    const pitchFactor = PITCH_VARIANT_IDS.has(id) ? randomPitchFactor() : 1;
+
     if (this.realSfxIds.has(id)) {
-      this.scene.sound.play(sfxKey(id), { volume: SFX_FILE_VOLUME });
+      this.scene.sound.play(sfxKey(id), { volume: SFX_FILE_VOLUME, rate: pitchFactor });
       return;
     }
 
@@ -210,10 +280,10 @@ export class AudioManager {
 
     switch (id) {
       case "fire":
-        this.blip(760, 0.04, "square", 0.05);
+        this.blip(FIRE_BASE_FREQ * pitchFactor, 0.04, "square", 0.05);
         break;
       case "hit":
-        this.blip(220, 0.05, "square", 0.06);
+        this.blip(HIT_BASE_FREQ * pitchFactor, 0.05, "square", 0.06);
         break;
       case "enemyDeath":
         this.sweep(320, 90, 0.16, "sawtooth", 0.07);
@@ -238,6 +308,9 @@ export class AudioManager {
         break;
       case "victory":
         this.chord([523, 659, 784, 1047], 0.5, 0.07);
+        break;
+      case "danger":
+        this.alarm();
         break;
     }
   }
@@ -287,6 +360,40 @@ export class AudioManager {
     osc.connect(env).connect(ctx.destination);
     osc.start(now);
     osc.stop(now + duration + 0.02);
+  }
+
+  /**
+   * A two-tone alternating siren (swarm/boss "danger" cue) — distinct from
+   * every other cue here: bossStart is one continuous downward sweep,
+   * this is discrete high-low-high-low blips, closer to an alarm klaxon
+   * than a musical sting, so it reads as urgent even layered under boss
+   * music or combat SFX.
+   */
+  private alarm(): void {
+    const ctx = this.context;
+    if (!ctx) {
+      return;
+    }
+
+    const tones = [660, 440, 660, 440];
+    const toneDuration = 0.12;
+    const gap = 0.14;
+    tones.forEach((freq, index) => {
+      const now = ctx.currentTime + index * gap;
+      const osc = ctx.createOscillator();
+      const env = ctx.createGain();
+
+      osc.type = "square";
+      osc.frequency.setValueAtTime(freq, now);
+
+      env.gain.setValueAtTime(0, now);
+      env.gain.linearRampToValueAtTime(0.08, now + 0.01);
+      env.gain.exponentialRampToValueAtTime(0.0001, now + toneDuration);
+
+      osc.connect(env).connect(ctx.destination);
+      osc.start(now);
+      osc.stop(now + toneDuration + 0.02);
+    });
   }
 
   /** Several tones together (level-up, victory) — a cheap "chime" without needing samples. */
