@@ -13,9 +13,15 @@ release.
       with Playwright: full HP/level/XP/coins/night/wave reset on every
       restart, across repeated death and victory cycles, with no listener
       accumulation and no new console/page errors.
-- [ ] **Upgrade stacking cap.** Cap each upgrade's max stacks and/or clamp a
-      minimum fire interval so late-game runs can't compound fire-rate
-      toward zero.
+- [x] **Upgrade stacking cap.** ~~Cap each upgrade's max stacks and/or clamp
+      a minimum fire interval~~ — **done.** Every upgrade is capped at
+      `MAX_UPGRADE_LEVEL = 10` picks (`config/UpgradeConfig.ts`), and the
+      auto-fire interval independently can't go below
+      `MIN_FIRE_INTERVAL_SECONDS = 0.1s` (`config/CombatConfig.ts`,
+      enforced in `CombatSystem`) regardless of source. Upgrade-selection
+      screen skips maxed upgrades and never shows an empty/dead-end screen.
+      Verified with Playwright at 20× over-application per upgrade — see
+      `PROJECT_AUDIT.md`'s P1 fix note.
 - [ ] **Background-pause vs. upgrade-selection input overlap.** Prevent a
       "tap to resume" input from also registering as an upgrade-card pick.
 
@@ -55,6 +61,8 @@ release.
       resize/orientation handling, tap-to-resume backgrounding pause
 - [x] Quality tiers (LOW/MEDIUM/HIGH) auto-selected from device capability,
       scoped to cosmetics only (gameplay values untouched)
+- [x] Upgrade stacking capped at 10 per upgrade; fire interval floored at
+      0.1s independent of the cap; no dead-end upgrade screen when maxed
 
 ## Re-run before shipping
 

@@ -7,6 +7,15 @@ export const PROJECTILE_RADIUS = 5;
 export const PROJECTILE_MAX_DISTANCE = 440;
 export const PROJECTILE_POOL_SIZE = 40;
 
+// Hard floor on the delay between auto-fired shots (seconds), regardless
+// of how much attackSpeed has been upgraded. At MAX_UPGRADE_LEVEL (see
+// UpgradeConfig.ts) attack speed tops out around 9.3/sec (~107ms), so this
+// floor is never hit in normal play — it exists as the authoritative
+// invariant guarding CombatSystem's `1 / attackSpeed` division itself
+// (never 0, negative, NaN, or an unbounded/near-zero interval), independent
+// of whatever produced the attackSpeed value.
+export const MIN_FIRE_INTERVAL_SECONDS = 0.1;
+
 // Enemies (headroom above the highest concurrent count a wave/boss can
 // realistically reach — Night 7's biggest wave alone spawns 75 over
 // its duration, though not all concurrently alive).

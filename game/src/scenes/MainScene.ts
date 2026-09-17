@@ -1,7 +1,7 @@
 import Phaser from "phaser";
 import { GAME_HEIGHT, GAME_WIDTH, WORLD_HEIGHT, WORLD_WIDTH } from "../config/GameConfig";
 import { QUALITY_PRESETS, QUALITY_REGISTRY_KEY, QualityLevel } from "../config/QualityConfig";
-import { UPGRADE_POOL, UpgradeDefinition } from "../config/UpgradeConfig";
+import { MAX_UPGRADE_LEVEL, UPGRADE_POOL, UpgradeDefinition } from "../config/UpgradeConfig";
 import { Background } from "../entities/Background";
 import { Player, PlayerEvents } from "../entities/Player";
 import { InputManager } from "../input/InputManager";
@@ -170,15 +170,24 @@ export class MainScene extends Phaser.Scene {
       return;
     }
 
+    const available = UPGRADE_POOL.filter((upgrade) => this.player.upgradeLevel(upgrade.id) < MAX_UPGRADE_LEVEL);
+    if (available.length === 0) {
+      // Every upgrade is already maxed — nothing left to offer. Drop the
+      // queued pick(s) rather than showing an empty/dead-end selection
+      // screen; levelling itself still proceeds normally.
+      this.pendingUpgradeChoices = 0;
+      return;
+    }
+
     this.pendingUpgradeChoices -= 1;
     this.paused = true;
 
-    const options = Phaser.Utils.Array.Shuffle([...UPGRADE_POOL]).slice(0, UPGRADE_CHOICES_SHOWN);
+    const options = Phaser.Utils.Array.Shuffle(available).slice(0, UPGRADE_CHOICES_SHOWN);
     this.upgradeSelection.show(options, (upgrade) => this.onUpgradeChosen(upgrade));
   }
 
   private onUpgradeChosen(upgrade: UpgradeDefinition): void {
-    this.player.applyUpgrade(upgrade.apply);
+    this.player.applyUpgrade(upgrade);
     this.paused = false;
     this.tryShowNextUpgrade();
   }

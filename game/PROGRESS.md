@@ -1,6 +1,6 @@
 # PROGRESS.md — Survive: 7 Nights
 
-Current status snapshot. Last updated: 2026-09-17 (P0 restart fix pass).
+Current status snapshot. Last updated: 2026-09-17 (P1 upgrade-cap fix pass).
 
 ## What exists and works (verified this session)
 
@@ -39,10 +39,26 @@ Current status snapshot. Last updated: 2026-09-17 (P0 restart fix pass).
   — no progress survives a reload.
 - **No audio (P1).** `AudioManager` exists but is never called anywhere, and
   no audio assets exist in `public/assets/`.
-- **Uncapped upgrade stacking (P1).** The 3-card upgrade pool has no
-  per-run cap; long runs can drive fire-rate toward "every frame" with no
-  design ceiling, and the same 3 cards repeat forever after the first pick
-  of each.
+- **~~Uncapped upgrade stacking (P1)~~ — FIXED.** Every upgrade (damage,
+  attack speed, move speed) is now capped at `MAX_UPGRADE_LEVEL = 10` picks
+  (`config/UpgradeConfig.ts`), tracked per-run in
+  `PlayerStats.upgradeLevels` and enforced in `Player.applyUpgrade()` (a
+  no-op once maxed). The auto-fire interval additionally has its own
+  independent floor, `MIN_FIRE_INTERVAL_SECONDS = 0.1` s
+  (`config/CombatConfig.ts`), enforced in `CombatSystem.fireIntervalFor()`
+  regardless of `attackSpeed`'s source — guards NaN/Infinity/zero/negative,
+  not just the capped case. The upgrade-selection screen now filters
+  `UPGRADE_POOL` down to non-maxed upgrades before offering choices, and
+  silently skips showing the screen at all if every upgrade is already
+  maxed (never a 0-choice dead end). Verified via Playwright: applying each
+  upgrade 20× (double the cap) leaves its level pinned at 10 and its stat
+  value unchanged past that point; attack speed maxes at 9.3/sec
+  (~107.5ms/shot, safely above the 100ms floor); all three stats stay
+  finite and positive; a forced level-up with everything maxed does not
+  pause the game or show an empty screen; restart still resets
+  `upgradeLevels` back to `{0,0,0}` (confirms a related fix — the stats
+  factory was changed from a shared constant to a per-Player factory so a
+  nested `upgradeLevels` object can't leak between runs).
 - **Possible input-overlap bug (P1, logic-derived).** Backgrounding the tab
   while the upgrade-selection screen is open may let a single "tap to
   resume" also silently select a hidden upgrade card underneath it.
@@ -54,7 +70,8 @@ Current status snapshot. Last updated: 2026-09-17 (P0 restart fix pass).
 
 ## Immediate next step
 
-P0 (restart) is done. See `RELEASE_CHECKLIST.md` for the remaining
-pre-launch checklist and `PROJECT_AUDIT.md`'s "TOP 10 PRIORITIES" for fix
-order. Per instruction, only the P0 item was fixed in this pass — P1/P2
-items remain open and untouched, waiting for direction.
+P0 (restart) and the uncapped-upgrade-stacking P1 are both done. See
+`RELEASE_CHECKLIST.md` for the remaining pre-launch checklist and
+`PROJECT_AUDIT.md`'s "TOP 10 PRIORITIES" for fix order. Per instruction,
+only that one P1 item was fixed in this pass — the rest of P1/P2 remain
+open and untouched, waiting for direction.

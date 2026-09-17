@@ -1,5 +1,5 @@
 import Phaser from "phaser";
-import { PLAYER_FIRE_RANGE, PROJECTILE_SPEED } from "../config/CombatConfig";
+import { MIN_FIRE_INTERVAL_SECONDS, PLAYER_FIRE_RANGE, PROJECTILE_SPEED } from "../config/CombatConfig";
 import { COLORS } from "../config/GameConfig";
 import { QualitySettings } from "../config/QualityConfig";
 import { Enemy } from "../entities/Enemy";
@@ -55,7 +55,20 @@ export class CombatSystem {
 
     this.scratchDirection.set(target.x - player.x, target.y - player.y).normalize();
     this.projectileManager.fire(player.x, player.y, this.scratchDirection, PROJECTILE_SPEED, player.damage);
-    this.fireTimer = 1 / player.attackSpeed;
+    this.fireTimer = CombatSystem.fireIntervalFor(player.attackSpeed);
+  }
+
+  // Never lets the auto-fire interval reach zero/negative or go below the
+  // configured floor — and never propagates NaN/Infinity from a
+  // corrupted/zero attackSpeed into fireTimer, which would otherwise fire
+  // every single frame forever (NaN comparisons are always false, so the
+  // `fireTimer > 0` guard above would never hold it back).
+  private static fireIntervalFor(attackSpeed: number): number {
+    if (!Number.isFinite(attackSpeed) || attackSpeed <= 0) {
+      return MIN_FIRE_INTERVAL_SECONDS;
+    }
+
+    return Math.max(MIN_FIRE_INTERVAL_SECONDS, 1 / attackSpeed);
   }
 
   private handleProjectileCollisions(): void {

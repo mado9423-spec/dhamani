@@ -41,6 +41,72 @@ untouched** — only P0-1 was in scope for this pass.
 
 ---
 
+## Status update (2026-09-17, second follow-up pass)
+
+**P1-3 (uncapped upgrade stacking) is fixed.** Investigated the exact
+existing formulas before choosing limits (not invented blindly): `damage`
+×1.2/pick, `attackSpeed` ×1.25/pick, `speed` ×1.15/pick
+(`config/UpgradeConfig.ts`), with `attackSpeed` read by `CombatSystem` as
+"attacks per second" and converted to a per-shot interval via
+`fireTimer = 1 / attackSpeed` seconds (`systems/CombatSystem.ts`) — the
+uncapped division that could approach zero.
+
+Fix, two independent layers:
+1. **Per-upgrade level cap.** `PlayerStats` gained
+   `upgradeLevels: Record<UpgradeId, number>` (`config/PlayerConfig.ts`),
+   incremented and checked in `Player.applyUpgrade()`
+   (`entities/Player.ts`) against a new `MAX_UPGRADE_LEVEL = 10`
+   (`config/UpgradeConfig.ts`) — chosen from the existing formulas, not a
+   round number picked blindly: at 10 stacks damage reaches 1.2¹⁰≈6.2×
+   (10→62.2), move speed 1.15¹⁰≈4.0× (260→1051), and attack speed
+   1.25¹⁰≈9.3/sec (~107.5ms/shot) — strong late-game power without an
+   unbounded curve, and already safely above the interval floor below
+   without needing it. Reaching the cap is a real no-op: the level counter
+   stops, `apply()` is never called again, so the stat itself stops too.
+2. **Independent fire-interval floor.** `MIN_FIRE_INTERVAL_SECONDS = 0.1`
+   (`config/CombatConfig.ts`) is enforced in a new
+   `CombatSystem.fireIntervalFor()` static helper — `Math.max(floor, 1 /
+   attackSpeed)`, with an explicit `Number.isFinite`/`<= 0` guard first so
+   a zero, negative, or NaN `attackSpeed` can never produce a NaN/Infinity
+   `fireTimer` (which would otherwise bypass the `fireTimer > 0` guard
+   entirely, since NaN comparisons are always false, and fire every
+   frame). This floor is independent of the level cap — it holds even if
+   `attackSpeed` were ever pushed past 10/sec by some future change.
+
+`UpgradeSelection.tryShowNextUpgrade()` (`scenes/MainScene.ts`) now filters
+`UPGRADE_POOL` to non-maxed upgrades before offering a choice, and drops
+the queued pick without showing the screen if every upgrade is already
+maxed — never a 0-choice dead end, and `UpgradeSelection.ts` itself needed
+no changes (dynamic card count already handled correctly).
+
+One related correctness fix was required to do this safely:
+`DEFAULT_PLAYER_STATS` was a shared module-level constant object spread
+(`{ ...DEFAULT_PLAYER_STATS }`) into each new `Player`; adding a nested
+`upgradeLevels` object to it would have been shared-by-reference across
+every Player instance and every restart (mutating one run's levels would
+have corrupted the next run's starting state). Changed to a
+`createDefaultPlayerStats()` factory returning a fresh object (including a
+fresh `upgradeLevels`) every call — confirmed via Playwright that a
+restart after maxing all three upgrades correctly comes back with
+`upgradeLevels: {damage:0, attackSpeed:0, moveSpeed:0}`.
+
+Verified via Playwright: a real UI upgrade pick still works end-to-end
+(screenshot confirmed); each upgrade applied 20× (double the cap)
+programmatically pins its level at exactly 10 and its stat value stops
+changing past that point; attack speed's resulting fire interval
+(0.1075s) sits safely above the 0.1s floor; all three stats stay finite
+and positive after over-application; a forced level-up with everything
+maxed does not pause the game or show an empty upgrade screen; restart
+still fully resets levels and stats; movement/combat/enemy-spawn/wave
+progression all still function after the maxed state and after a
+subsequent restart. `npx tsc --noEmit` and `npm run build` both stay
+clean, zero `any`/`@ts-ignore` introduced.
+
+**All other P1/P2/P3 findings below remain open and untouched** — only
+P1-3 was in scope for this pass.
+
+---
+
 ## 1. Project Discovery (verified facts, not assumptions)
 
 - Stack: Phaser **3.90.0** installed (declared `^3.80.1`), TypeScript

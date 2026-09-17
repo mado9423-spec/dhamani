@@ -1,7 +1,8 @@
 import Phaser from "phaser";
 import { COLORS } from "../config/GameConfig";
-import { DEFAULT_PLAYER_STATS, getExperienceForLevel, PlayerStats } from "../config/PlayerConfig";
+import { createDefaultPlayerStats, getExperienceForLevel, PlayerStats, UpgradeId } from "../config/PlayerConfig";
 import { QualitySettings } from "../config/QualityConfig";
+import { MAX_UPGRADE_LEVEL, UpgradeDefinition } from "../config/UpgradeConfig";
 import { MovementSystem } from "../systems/MovementSystem";
 import { clamp } from "../utils/MathUtils";
 
@@ -49,7 +50,7 @@ export class Player extends Phaser.GameObjects.Container {
     super(scene, x, y);
 
     this.quality = quality;
-    this.stats = { ...DEFAULT_PLAYER_STATS };
+    this.stats = createDefaultPlayerStats();
 
     this.bodyShape = scene.add.triangle(
       0,
@@ -165,9 +166,24 @@ export class Player extends Phaser.GameObjects.Container {
     this.emit(PlayerEvents.COINS_CHANGED, { coins: this.stats.coins });
   }
 
-  /** Permanently mutates a stat (level-up upgrade pick). */
-  applyUpgrade(apply: (stats: PlayerStats) => void): void {
-    apply(this.stats);
+  /** How many times the given upgrade has been picked this run. */
+  upgradeLevel(id: UpgradeId): number {
+    return this.stats.upgradeLevels[id];
+  }
+
+  /**
+   * Permanently mutates a stat (level-up upgrade pick). A no-op once that
+   * upgrade has reached MAX_UPGRADE_LEVEL — defensive even though the
+   * upgrade-selection screen is expected to stop offering maxed upgrades
+   * first, so a stat can never be pushed past its intended ceiling.
+   */
+  applyUpgrade(upgrade: UpgradeDefinition): void {
+    if (this.stats.upgradeLevels[upgrade.id] >= MAX_UPGRADE_LEVEL) {
+      return;
+    }
+
+    this.stats.upgradeLevels[upgrade.id] += 1;
+    upgrade.apply(this.stats);
   }
 
   private levelUp(): void {

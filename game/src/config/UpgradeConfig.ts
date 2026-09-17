@@ -1,6 +1,4 @@
-import { PlayerStats } from "./PlayerConfig";
-
-export type UpgradeId = "damage" | "attackSpeed" | "moveSpeed";
+import { PlayerStats, UpgradeId } from "./PlayerConfig";
 
 export interface UpgradeDefinition {
   id: UpgradeId;
@@ -8,6 +6,17 @@ export interface UpgradeDefinition {
   label: string;
   apply: (stats: PlayerStats) => void;
 }
+
+// Hard cap on how many times a single upgrade can be picked in one run.
+// Each pick compounds multiplicatively (see the `apply` functions below),
+// so without a ceiling a long run (Night 7 alone offers enough level-ups
+// to max several upgrades many times over) could push a stat — attack
+// speed especially — toward an unsafe extreme. At 10 stacks: damage
+// reaches 1.2^10 ≈ 6.2x, move speed 1.15^10 ≈ 4.1x, and attack speed
+// 1.25^10 ≈ 9.3/sec (~107ms between shots) — strong but bounded, and the
+// attack-speed case is additionally floored in CombatConfig via
+// MIN_FIRE_INTERVAL_SECONDS regardless of this cap.
+export const MAX_UPGRADE_LEVEL = 10;
 
 export const UPGRADE_POOL: UpgradeDefinition[] = [
   {
