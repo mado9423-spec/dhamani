@@ -1,3 +1,4 @@
+import { ORB_SPLASH_RADIUS_PER_LEVEL } from "./CombatConfig";
 import { PlayerStats, UpgradeId } from "./PlayerConfig";
 
 export interface UpgradeDefinition {
@@ -41,6 +42,33 @@ export const UPGRADE_POOL: UpgradeDefinition[] = [
     label: "+15% Movement Speed",
     apply: (stats) => {
       stats.speed = Math.round(stats.speed * 1.15);
+    },
+  },
+  // Switches the equipped weapon to the Shotgun Rig (see WeaponTypeId in
+  // CombatConfig.ts and CombatSystem.fireShotgun) — several weaker
+  // pellets in a spread cone instead of one full-damage bolt. Picking it
+  // again while already equipped just adds another pellet rather than
+  // re-switching to itself.
+  {
+    id: "shotgunWeapon",
+    icon: "💥",
+    label: "Shotgun Rig (+1 Pellet)",
+    apply: (stats) => {
+      stats.weaponType = "shotgun";
+      stats.shotgunPelletCount += 1;
+    },
+  },
+  // Switches the equipped weapon to the Void Orb (see CombatSystem.fireOrb)
+  // — one slow projectile that splash-damages every enemy in range of its
+  // impact point. Picking it again while already equipped grows the
+  // splash radius further.
+  {
+    id: "orbWeapon",
+    icon: "🔮",
+    label: "Void Orb (+Splash Radius)",
+    apply: (stats) => {
+      stats.weaponType = "orb";
+      stats.orbSplashRadius += ORB_SPLASH_RADIUS_PER_LEVEL;
     },
   },
 ];

@@ -5,7 +5,41 @@ export const PLAYER_FIRE_RANGE = 380;
 export const PROJECTILE_SPEED = 520;
 export const PROJECTILE_RADIUS = 5;
 export const PROJECTILE_MAX_DISTANCE = 440;
-export const PROJECTILE_POOL_SIZE = 40;
+// Shared by every player weapon type — bolt/shotgun/orb are mutually
+// exclusive (see WeaponTypeId below), so one pool covers whichever is
+// currently equipped. Sized for "Shotgun Rig"'s worst case: up to ~13
+// pellets/shot (SHOTGUN_PELLET_COUNT_BASE + MAX_UPGRADE_LEVEL stacks) at
+// the ~0.1s MIN_FIRE_INTERVAL_SECONDS floor, each pellet alive for
+// ~0.8s before hitting PROJECTILE_MAX_DISTANCE — roughly 8 overlapping
+// shots × 13 pellets. A lone bolt or orb per shot never gets close to
+// needing this much room; ObjectPool only allocates lazily up to this
+// cap, so the unused headroom costs nothing in the common case.
+export const PROJECTILE_POOL_SIZE = 120;
+
+// The player's currently-equipped weapon — exactly one at a time (see
+// entities/Weapon.ts and PlayerStats.weaponType), switched by picking
+// the corresponding UpgradeConfig.ts upgrade; picking that upgrade again
+// upgrades whichever is currently equipped further rather than granting
+// a second, simultaneously-firing weapon.
+export type WeaponTypeId = "bolt" | "shotgun" | "orb";
+
+// "shotgun" — several weaker pellets fired in a spread cone instead of
+// one full-damage bolt, each independently checked against enemies (see
+// CombatSystem.resolveHit) — strong against a cluster at close/mid
+// range, weak against a single far target.
+export const SHOTGUN_PELLET_COUNT_BASE = 3;
+export const SHOTGUN_SPREAD_RADIANS = 0.5;
+export const SHOTGUN_PELLET_DAMAGE_MULTIPLIER = 0.45;
+export const SHOTGUN_PROJECTILE_SPEED = 560;
+
+// "orb" — one slow, heavy projectile that splash-damages every enemy
+// within orbSplashRadius of its impact point, not just whatever it
+// directly hit — the payoff for being slow enough to dodge/outrun and
+// only ever landing once per shot.
+export const ORB_PROJECTILE_SPEED = 190;
+export const ORB_SPLASH_RADIUS_BASE = 50;
+export const ORB_SPLASH_RADIUS_PER_LEVEL = 12;
+export const ORB_DAMAGE_MULTIPLIER = 1.6;
 
 // Weapon (a separate top-level GameObject that tracks the player's
 // position every frame, independent of the player's own facing-flip —

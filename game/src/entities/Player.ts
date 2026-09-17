@@ -2,6 +2,7 @@ import Phaser from "phaser";
 import { AudioManager } from "../audio/AudioManager";
 import { playerAnimKey } from "../config/AnimationConfig";
 import { SPRITE_ASSETS_REGISTRY_KEY } from "../config/AssetConfig";
+import { WeaponTypeId } from "../config/CombatConfig";
 import { COLORS } from "../config/GameConfig";
 import { createDefaultPlayerStats, getExperienceForLevel, PlayerStats, UpgradeId } from "../config/PlayerConfig";
 import { QualitySettings } from "../config/QualityConfig";
@@ -183,6 +184,18 @@ export class Player extends Phaser.GameObjects.Container {
     return this.stats.attackSpeed;
   }
 
+  get weaponType(): WeaponTypeId {
+    return this.stats.weaponType;
+  }
+
+  get shotgunPelletCount(): number {
+    return this.stats.shotgunPelletCount;
+  }
+
+  get orbSplashRadius(): number {
+    return this.stats.orbSplashRadius;
+  }
+
   get experience(): number {
     return this.stats.experience;
   }
@@ -289,6 +302,11 @@ export class Player extends Phaser.GameObjects.Container {
 
     this.stats.upgradeLevels[upgrade.id] += 1;
     upgrade.apply(this.stats);
+    // A cheap no-op for every non-weapon upgrade (setWeaponType() itself
+    // guards on no actual change) — simplest way to keep the held
+    // weapon's visual in sync with whichever type shotgunWeapon/orbWeapon
+    // just switched stats.weaponType to.
+    this.weapon.setWeaponType(this.stats.weaponType);
   }
 
   private levelUp(): void {

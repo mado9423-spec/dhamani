@@ -46,6 +46,13 @@ export const COLORS = {
   muzzleSpark: 0xff5a3d,
   smokeTrail: 0x241820,
 
+  // "Shotgun Rig" — small amber/hot-metal pellets.
+  pelletProjectile: 0xffcf6b,
+  pelletProjectileGlow: 0x8a5a1a,
+  // "Void Orb" — a large, slow eldritch-violet sphere.
+  orbProjectile: 0x8f5bff,
+  orbProjectileGlow: 0x3a1a6a,
+
   enemyHitFlash: 0xffffff,
   xpPickup: 0x6a5a9c,
 

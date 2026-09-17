@@ -1,11 +1,23 @@
 import Phaser from "phaser";
 import { AudioManager } from "../audio/AudioManager";
-import { ENEMY_PROJECTILE_POOL_SIZE, ENEMY_PROJECTILE_SPEED, MIN_FIRE_INTERVAL_SECONDS, PLAYER_FIRE_RANGE, PROJECTILE_SPEED } from "../config/CombatConfig";
+import {
+  ENEMY_PROJECTILE_POOL_SIZE,
+  ENEMY_PROJECTILE_SPEED,
+  MIN_FIRE_INTERVAL_SECONDS,
+  ORB_DAMAGE_MULTIPLIER,
+  ORB_PROJECTILE_SPEED,
+  PLAYER_FIRE_RANGE,
+  PROJECTILE_SPEED,
+  SHOTGUN_PELLET_DAMAGE_MULTIPLIER,
+  SHOTGUN_PROJECTILE_SPEED,
+  SHOTGUN_SPREAD_RADIANS,
+} from "../config/CombatConfig";
 import { COLORS } from "../config/GameConfig";
 import { QualitySettings } from "../config/QualityConfig";
 import { Enemy } from "../entities/Enemy";
 import { Player } from "../entities/Player";
 import { Projectile } from "../entities/Projectile";
+import { MuzzlePoint } from "../entities/Weapon";
 import { ScreenFX } from "../ui/ScreenFX";
 import { EffectsManager } from "./EffectsManager";
 import { EnemyManager } from "./EnemyManager";
@@ -98,17 +110,66 @@ export class CombatSystem {
     // The weapon visually aims wherever the cursor is (see Weapon.update,
     // called every frame from Player.update) — firing snaps its recoil
     // and hands back the muzzle tip's current world position, so the
-    // bolt visibly leaves the blade rather than the player's center. The
-    // bolt's own travel direction stays the actual combat target
+    // shot visibly leaves the blade rather than the player's center. The
+    // shot's own travel direction stays the actual combat target
     // (nearest enemy) — the weapon's cursor-aim is presentation, not a
     // change to auto-fire targeting.
     const muzzle = player.weapon.triggerFire(this.scratchDirection);
-    this.projectileManager.fire(muzzle.x, muzzle.y, this.scratchDirection, PROJECTILE_SPEED, player.damage);
     this.effectsManager.spawnMuzzleFlash(muzzle.x, muzzle.y, muzzle.angle);
+
+    switch (player.weaponType) {
+      case "shotgun":
+        this.fireShotgun(muzzle, player);
+        break;
+      case "orb":
+        this.fireOrb(muzzle, player);
+        break;
+      default:
+        this.projectileManager.fire(muzzle.x, muzzle.y, this.scratchDirection, PROJECTILE_SPEED, player.damage, "bolt");
+        break;
+    }
+
     // A no-op in vector-art mode (no sprite to animate) — see Player.ts.
     player.playAttackAnimation();
     this.audio.play("fire");
     this.fireTimer = CombatSystem.fireIntervalFor(player.attackSpeed);
+  }
+
+  /**
+   * Fans player.shotgunPelletCount "pellet" projectiles evenly across
+   * SHOTGUN_SPREAD_RADIANS centered on the aim direction that's already
+   * in this.scratchDirection — reused sequentially per pellet (each
+   * fire() call consumes it synchronously, same as every other caller of
+   * this field), rather than one shot straight down the aim line.
+   */
+  private fireShotgun(muzzle: MuzzlePoint, player: Player): void {
+    const baseAngle = Math.atan2(this.scratchDirection.y, this.scratchDirection.x);
+    const pelletCount = player.shotgunPelletCount;
+    const pelletDamage = Math.max(1, Math.round(player.damage * SHOTGUN_PELLET_DAMAGE_MULTIPLIER));
+    const halfSpread = SHOTGUN_SPREAD_RADIANS / 2;
+
+    for (let i = 0; i < pelletCount; i += 1) {
+      // A single pellet fires straight down the aim line; more than one
+      // fan out symmetrically around it.
+      const t = pelletCount === 1 ? 0.5 : i / (pelletCount - 1);
+      const angle = baseAngle - halfSpread + t * SHOTGUN_SPREAD_RADIANS;
+      this.scratchDirection.set(Math.cos(angle), Math.sin(angle));
+      this.projectileManager.fire(muzzle.x, muzzle.y, this.scratchDirection, SHOTGUN_PROJECTILE_SPEED, pelletDamage, "pellet");
+    }
+  }
+
+  /** One slow "orb" projectile straight down the current aim direction — splash handled on impact, see applySplashDamage(). */
+  private fireOrb(muzzle: MuzzlePoint, player: Player): void {
+    const orbDamage = Math.max(1, Math.round(player.damage * ORB_DAMAGE_MULTIPLIER));
+    this.projectileManager.fire(
+      muzzle.x,
+      muzzle.y,
+      this.scratchDirection,
+      ORB_PROJECTILE_SPEED,
+      orbDamage,
+      "orb",
+      player.orbSplashRadius
+    );
   }
 
   // Never lets the auto-fire interval reach zero/negative or go below the
@@ -187,6 +248,9 @@ export class CombatSystem {
 
   private resolveHit(projectile: Projectile, enemy: Enemy): void {
     const damage = projectile.damage;
+    const splashRadius = projectile.splashRadius;
+    const impactX = projectile.x;
+    const impactY = projectile.y;
     const isBoss = enemy.type === "boss" || enemy.type === "finalBoss";
     projectile.deactivate();
 
@@ -201,11 +265,41 @@ export class CombatSystem {
       this.screenFx.pulseImpact(0.2, 180);
     }
 
+    this.applyDamage(enemy, damage);
+
+    // > 0 only for "orb" (see Projectile.splashRadius) — every other
+    // active enemy within range of the impact point takes the same
+    // damage as the one directly hit, on top of it.
+    if (splashRadius > 0) {
+      this.applySplashDamage(impactX, impactY, splashRadius, damage, enemy);
+    }
+  }
+
+  private applyDamage(enemy: Enemy, damage: number): void {
     const killed = enemy.takeDamage(damage);
     if (killed) {
       this.audio.play("enemyDeath");
       this.pickupManager.spawn("xp", enemy.x, enemy.y, enemy.xpReward);
       this.pickupManager.spawn("coin", enemy.x, enemy.y + 6, enemy.coinReward);
     }
+  }
+
+  private applySplashDamage(x: number, y: number, splashRadius: number, damage: number, excludeEnemy: Enemy): void {
+    const radiusSq = splashRadius * splashRadius;
+
+    this.enemyManager.forEachActive((enemy) => {
+      if (enemy === excludeEnemy) {
+        return;
+      }
+
+      const dx = enemy.x - x;
+      const dy = enemy.y - y;
+      if (dx * dx + dy * dy > radiusSq) {
+        return;
+      }
+
+      this.effectsManager.spawnHitEffect(enemy.x, enemy.y, COLORS.orbProjectile);
+      this.applyDamage(enemy, damage);
+    });
   }
 }

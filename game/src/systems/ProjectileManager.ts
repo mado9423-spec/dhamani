@@ -1,6 +1,6 @@
 import Phaser from "phaser";
 import { PROJECTILE_POOL_SIZE } from "../config/CombatConfig";
-import { Projectile } from "../entities/Projectile";
+import { Projectile, ProjectileKind } from "../entities/Projectile";
 import { ObjectPool } from "./ObjectPool";
 
 /**
@@ -21,10 +21,18 @@ export class ProjectileManager {
     this.pool = new ObjectPool(() => new Projectile(this.scene, onTrail), poolSize);
   }
 
-  fire(x: number, y: number, direction: Phaser.Math.Vector2, speed: number, damage: number): void {
+  fire(
+    x: number,
+    y: number,
+    direction: Phaser.Math.Vector2,
+    speed: number,
+    damage: number,
+    kind?: ProjectileKind,
+    splashRadius?: number
+  ): void {
     // Pool exhausted (extreme fire-rate burst): just skip this shot
     // rather than repositioning one still mid-flight.
-    this.pool.acquire()?.fire(x, y, direction, speed, damage);
+    this.pool.acquire()?.fire(x, y, direction, speed, damage, kind, splashRadius);
   }
 
   update(deltaSeconds: number, worldBounds: Phaser.Geom.Rectangle): void {
