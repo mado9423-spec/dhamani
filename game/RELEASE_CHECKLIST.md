@@ -6,10 +6,13 @@ release.
 
 ## Blocking (must fix before any release)
 
-- [ ] **Restart/replay flow.** Death and Victory screens need a working
-      button/tap target that resets the run (`scene.scene.restart()` or
-      equivalent full state reset). Currently there is none — confirmed via
-      live testing.
+- [x] **Restart/replay flow.** ~~Death and Victory screens need a working
+      button/tap target that resets the run~~ — **done.** Both screens now
+      show an "إعادة اللعب" button (`src/ui/RestartButton.ts`, mouse/touch/
+      Enter/Space) that calls `MainScene`'s `this.scene.restart()`. Verified
+      with Playwright: full HP/level/XP/coins/night/wave reset on every
+      restart, across repeated death and victory cycles, with no listener
+      accumulation and no new console/page errors.
 - [ ] **Upgrade stacking cap.** Cap each upgrade's max stacks and/or clamp a
       minimum fire interval so late-game runs can't compound fire-rate
       toward zero.
@@ -62,6 +65,7 @@ npm run build
 ```
 
 Then a manual pass: start a run, take damage, level up (confirm the upgrade
-modal), let a full wave clear, reach a boss, die, and — once the restart fix
-above lands — restart and confirm state is fully reset (HP, level, XP,
-coins, night/wave index, all pooled objects deactivated).
+modal), let a full wave clear, reach a boss, die, restart, and confirm state
+is fully reset (HP, level, XP, coins, night/wave index, all pooled objects
+deactivated). Repeat death→restart and victory→restart a few times in a row
+to re-confirm no duplicate listeners/entities creep in.

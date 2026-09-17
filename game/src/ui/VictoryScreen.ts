@@ -1,5 +1,6 @@
 import Phaser from "phaser";
 import { COLORS } from "../config/GameConfig";
+import { RestartButton } from "./RestartButton";
 
 /**
  * Full-screen victory overlay, hidden until the Night 7 Final Boss is
@@ -10,6 +11,7 @@ export class VictoryScreen {
   private readonly overlay: Phaser.GameObjects.Rectangle;
   private readonly title: Phaser.GameObjects.Text;
   private readonly subtitle: Phaser.GameObjects.Text;
+  private readonly restartButton: RestartButton;
 
   constructor(scene: Phaser.Scene, width: number, height: number) {
     this.overlay = scene.add
@@ -39,17 +41,21 @@ export class VictoryScreen {
       .setScrollFactor(0)
       .setDepth(3001)
       .setVisible(false);
+
+    this.restartButton = new RestartButton(scene, width / 2, height / 2 + 90, "إعادة اللعب");
   }
 
-  show(): void {
+  show(onRestart: () => void): void {
     this.overlay.setVisible(true);
     this.title.setVisible(true);
     this.subtitle.setVisible(true);
+    this.restartButton.show(onRestart);
   }
 
   destroy(): void {
     this.overlay.destroy();
     this.title.destroy();
     this.subtitle.destroy();
+    this.restartButton.destroy();
   }
 }

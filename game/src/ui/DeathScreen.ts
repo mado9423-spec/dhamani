@@ -1,5 +1,6 @@
 import Phaser from "phaser";
 import { COLORS } from "../config/GameConfig";
+import { RestartButton } from "./RestartButton";
 
 /**
  * Full-screen death overlay, hidden until the player dies. Fixed to
@@ -8,6 +9,7 @@ import { COLORS } from "../config/GameConfig";
 export class DeathScreen {
   private readonly overlay: Phaser.GameObjects.Rectangle;
   private readonly text: Phaser.GameObjects.Text;
+  private readonly restartButton: RestartButton;
 
   constructor(scene: Phaser.Scene, width: number, height: number) {
     this.overlay = scene.add
@@ -26,15 +28,19 @@ export class DeathScreen {
       .setScrollFactor(0)
       .setDepth(3001)
       .setVisible(false);
+
+    this.restartButton = new RestartButton(scene, width / 2, height / 2 + 70, "إعادة اللعب");
   }
 
-  show(): void {
+  show(onRestart: () => void): void {
     this.overlay.setVisible(true);
     this.text.setVisible(true);
+    this.restartButton.show(onRestart);
   }
 
   destroy(): void {
     this.overlay.destroy();
     this.text.destroy();
+    this.restartButton.destroy();
   }
 }

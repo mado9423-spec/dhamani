@@ -1,6 +1,6 @@
 # PROGRESS.md — Survive: 7 Nights
 
-Current status snapshot. Last updated: 2026-09-17 (Deep Audit pass).
+Current status snapshot. Last updated: 2026-09-17 (P0 restart fix pass).
 
 ## What exists and works (verified this session)
 
@@ -26,9 +26,15 @@ Current status snapshot. Last updated: 2026-09-17 (Deep Audit pass).
 
 ## What's missing or broken (see PROJECT_AUDIT.md for full detail)
 
-- **No restart flow (P0).** Death and Victory screens are display-only —
-  there is no way to play again without reloading the browser tab. This is
-  the single blocking issue for calling the game "complete."
+- **~~No restart flow (P0)~~ — FIXED.** Death and Victory screens now show
+  an "إعادة اللعب" (Play Again) button (`src/ui/RestartButton.ts`) that
+  calls `this.scene.restart()`, giving Phaser's own scene lifecycle a
+  genuinely clean reset. Verified via Playwright: die→restart→die→restart,
+  and victory→restart repeated twice, all reset HP/level/XP/coins/night/wave
+  to fresh-start values every time, with zero listener accumulation across
+  4 consecutive restarts (game/scale/input listener counts confirmed
+  constant) and zero console/page errors introduced. See
+  `PROJECT_AUDIT.md`'s "P0 fix" note for the full root-cause writeup.
 - **No persistence (P1).** `SaveManager` exists but is never called anywhere
   — no progress survives a reload.
 - **No audio (P1).** `AudioManager` exists but is never called anywhere, and
@@ -48,7 +54,7 @@ Current status snapshot. Last updated: 2026-09-17 (Deep Audit pass).
 
 ## Immediate next step
 
-See `RELEASE_CHECKLIST.md` for the concrete pre-launch checklist, and
-`PROJECT_AUDIT.md`'s "TOP 10 PRIORITIES" for fix order. No fixes have been
-applied yet — this audit intentionally stopped after reporting, per
-instruction, to wait for direction on which items to act on.
+P0 (restart) is done. See `RELEASE_CHECKLIST.md` for the remaining
+pre-launch checklist and `PROJECT_AUDIT.md`'s "TOP 10 PRIORITIES" for fix
+order. Per instruction, only the P0 item was fixed in this pass — P1/P2
+items remain open and untouched, waiting for direction.

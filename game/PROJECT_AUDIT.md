@@ -17,6 +17,30 @@ Date of this audit: 2026-09-17.
 
 ---
 
+## Status update (2026-09-17, follow-up pass)
+
+**P0-1 (no restart flow) is fixed.** `src/ui/RestartButton.ts` is a new
+shared, tappable "إعادة اللعب" control (mouse, touch, and Enter/Space),
+used by both `DeathScreen.show(onRestart)` and `VictoryScreen.show(onRestart)`.
+`MainScene` wires both to `() => this.scene.restart()`, letting Phaser's own
+scene shutdown/create cycle do the reset — its `DisplayList`/`UpdateList`/
+`Clock`/`TweenManager`/`InputPlugin` all auto-destroy or auto-clear
+everything scene-scoped on `SHUTDOWN` (confirmed by reading Phaser's own
+source this pass), and `MainScene`'s existing manual cleanup already
+correctly removed the two listener types Phaser does *not* auto-clean
+(`game.events` and `scale`, both Game-global, not scene-scoped) — so no
+further manual teardown code was needed. Verified via Playwright: repeated
+death→restart and victory→restart cycles all produce a fully fresh session
+(HP/level/XP/coins/night/wave reset), with `game.events`/`scale`/
+`scene.input` listener counts confirmed identical before and after 4
+consecutive restarts (no accumulation), and zero new console/page errors.
+Full write-up of the root cause and fix in the P0-1 entry below (left
+otherwise unchanged from the original audit for the record) and in the
+commit that applied it. **All P1/P2/P3 findings below remain open and
+untouched** — only P0-1 was in scope for this pass.
+
+---
+
 ## 1. Project Discovery (verified facts, not assumptions)
 
 - Stack: Phaser **3.90.0** installed (declared `^3.80.1`), TypeScript

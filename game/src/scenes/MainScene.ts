@@ -50,7 +50,7 @@ export class MainScene extends Phaser.Scene {
   // Class-field arrow functions so the exact same reference can be
   // passed to both .on() and .off() — an inline arrow at each call
   // site can't be unsubscribed later.
-  private readonly handlePlayerDied = (): void => this.deathScreen.show();
+  private readonly handlePlayerDied = (): void => this.deathScreen.show(() => this.scene.restart());
   private readonly handlePlayerLevelUp = (): void => this.queueUpgradeChoice();
   private readonly handleGamePause = (): void => this.showBackgroundPause();
   private readonly handleGameResume = (): void => this.showBackgroundPause();
@@ -205,7 +205,7 @@ export class MainScene extends Phaser.Scene {
       if (isFinalNight) {
         this.announcement.show("Victory!");
         this.hud.setWaveStatus("Campaign Complete · Victory!");
-        this.victoryScreen.show();
+        this.victoryScreen.show(() => this.scene.restart());
         return;
       }
 
