@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover"
+    />
+    <title>Survive: 7 Nights</title>
+    <meta name="theme-color" content="#0d0f14" />
+    <link rel="icon" type="image/svg+xml" href="/dhamani/favicon.svg" />
+    <style>
+      html,
+      body {
+        margin: 0;
+        padding: 0;
+        width: 100%;
+        height: 100%;
+        height: 100dvh;
+        background: #0d0f14;
+        overflow: hidden;
+        overscroll-behavior: none;
+        /* Mobile hardening: no page scroll/pan/pinch-zoom gestures on
+           the game surface, no text selection, no iOS long-press
+           callout menu, no Android tap-highlight flash. */
+        touch-action: none;
+        -ms-touch-action: none;
+        -webkit-user-select: none;
+        -moz-user-select: none;
+        user-select: none;
+        -webkit-touch-callout: none;
+        -webkit-tap-highlight-color: transparent;
+      }
+
+      #app {
+        display: flex;
+        width: 100%;
+        height: 100%;
+        align-items: center;
+        justify-content: center;
+        touch-action: none;
+      }
+
+      #app canvas {
+        max-width: 100%;
+        max-height: 100%;
+        touch-action: none;
+      }
+
+      /* Plain-DOM fallback shown only if the game fails to boot (see
+         main.ts's global error handler) — deliberately independent of
+         Phaser/canvas so it still renders even when the game itself
+         can't. Hidden by default. */
+      #boot-error {
+        display: none;
+        position: fixed;
+        inset: 0;
+        align-items: center;
+        justify-content: center;
+        background: #0d0f14;
+        color: #e6fffb;
+        font-family: monospace;
+        text-align: center;
+        padding: 24px;
+        box-sizing: border-box;
+      }
+
+      #boot-error .boot-error-card {
+        max-width: 420px;
+      }
+
+      #boot-error h1 {
+        font-size: 20px;
+        margin: 0 0 12px;
+        color: #e6fffb;
+      }
+
+      #boot-error p {
+        font-size: 14px;
+        color: #8892a6;
+        margin: 0 0 20px;
+        line-height: 1.5;
+      }
+
+      #boot-error button {
+        font-family: monospace;
+        font-size: 14px;
+        padding: 10px 24px;
+        background: #4fd1c5;
+        color: #0d0f14;
+        border: 2px solid #e6fffb;
+        border-radius: 4px;
+        cursor: pointer;
+      }
+
+      #boot-error button:hover {
+        background: #e6fffb;
+      }
+    </style>
+    <script type="module" crossorigin src="/dhamani/assets/index-f08OFXOD.js"></script>
+    <link rel="modulepreload" crossorigin href="/dhamani/assets/phaser-0RJB29YE.js">
+  </head>
+  <body>
+    <div id="app"></div>
+    <div id="boot-error" role="alert">
+      <div class="boot-error-card">
+        <h1>Survive: 7 Nights</h1>
+        <p>Something went wrong starting the game. Please reload the page.</p>
+        <button id="boot-error-reload" type="button">Reload</button>
+      </div>
+    </div>
+  </body>
+</html>
