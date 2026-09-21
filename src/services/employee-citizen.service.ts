@@ -40,3 +40,37 @@ export async function getCitizenTransactions(citizenId: string) {
 
   return data ?? [];
 }
+
+export interface ActivationCodeResult {
+  success: boolean;
+  code?: string;
+  expiresAt?: string;
+  message?: string;
+}
+
+// Employee issues a one-time activation code for a citizen of his own branch.
+// Authorization and audit are enforced inside the database function.
+export async function issueActivationCode(
+  citizenId: string
+): Promise<ActivationCodeResult> {
+  const { data, error } = await supabase.rpc("issue_citizen_activation_code", {
+    p_citizen_id: citizenId,
+  });
+
+  if (error) {
+    if (error.code === "42501") {
+      return { success: false, message: "لا تملك صلاحية إصدار رمز لهذا المواطن" };
+    }
+    if (error.message.includes("citizen_not_active")) {
+      return { success: false, message: "حساب المواطن غير نشط" };
+    }
+    return { success: false, message: "تعذر إصدار رمز التفعيل، حاول مرة أخرى" };
+  }
+
+  const result = data as { code?: string; expires_at?: string } | null;
+  if (!result?.code) {
+    return { success: false, message: "تعذر إصدار رمز التفعيل، حاول مرة أخرى" };
+  }
+
+  return { success: true, code: result.code, expiresAt: result.expires_at };
+}
