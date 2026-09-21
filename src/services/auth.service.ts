@@ -1,9 +1,14 @@
 import { supabase } from "../lib/supabaseClient";
 
 interface CitizenLoginInput {
-  fullName: string;
   pensionNumber: string;
-  branchCode: string;
+  pin: string;
+}
+
+interface CitizenActivateInput {
+  pensionNumber: string;
+  activationCode: string;
+  pin: string;
 }
 
 interface EmployeeLoginInput {
@@ -11,36 +16,52 @@ interface EmployeeLoginInput {
   password: string;
 }
 
+export interface AuthResult {
+  success: boolean;
+  message?: string;
+  code?: string;
+}
+
+interface CitizenAuthResponse {
+  access_token?: string;
+  refresh_token?: string;
+  error?: string;
+  code?: string;
+}
+
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string;
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string;
 
-export async function citizenLogin({
-  fullName,
-  pensionNumber,
-  branchCode,
-}: CitizenLoginInput): Promise<{ success: boolean; message?: string }> {
-  const response = await fetch(
-    `${supabaseUrl}/functions/v1/citizen-login`,
-    {
+const GENERIC_ERROR = "تعذر تسجيل الدخول، تحقق من البيانات المدخلة";
+
+async function callCitizenAuth(body: Record<string, string>): Promise<AuthResult> {
+  let response: Response;
+  try {
+    response = await fetch(`${supabaseUrl}/functions/v1/citizen-auth`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
         Authorization: `Bearer ${supabaseAnonKey}`,
+        apikey: supabaseAnonKey,
       },
-      body: JSON.stringify({
-        full_name: fullName,
-        pension_number: pensionNumber,
-        branch_code: branchCode,
-      }),
-    }
-  );
+      body: JSON.stringify(body),
+    });
+  } catch {
+    return { success: false, message: "تعذر الاتصال بالخادم، تحقق من الإنترنت" };
+  }
 
-  const result = await response.json();
+  let result: CitizenAuthResponse = {};
+  try {
+    result = (await response.json()) as CitizenAuthResponse;
+  } catch {
+    result = {};
+  }
 
-  if (!response.ok) {
+  if (!response.ok || !result.access_token || !result.refresh_token) {
     return {
       success: false,
-      message: result.error ?? "تعذر تسجيل الدخول، تحقق من البيانات المدخلة",
+      message: result.error ?? GENERIC_ERROR,
+      code: result.code,
     };
   }
 
@@ -56,10 +77,34 @@ export async function citizenLogin({
   return { success: true };
 }
 
+export function citizenLogin({
+  pensionNumber,
+  pin,
+}: CitizenLoginInput): Promise<AuthResult> {
+  return callCitizenAuth({
+    action: "login",
+    pension_number: pensionNumber,
+    pin,
+  });
+}
+
+export function citizenActivate({
+  pensionNumber,
+  activationCode,
+  pin,
+}: CitizenActivateInput): Promise<AuthResult> {
+  return callCitizenAuth({
+    action: "activate",
+    pension_number: pensionNumber,
+    activation_code: activationCode,
+    pin,
+  });
+}
+
 export async function employeeLogin({
   employeeNumber,
   password,
-}: EmployeeLoginInput): Promise<{ success: boolean; message?: string }> {
+}: EmployeeLoginInput): Promise<AuthResult> {
   const syntheticEmail = `${employeeNumber.trim()}@staff.dhamani.ly`;
 
   const { error } = await supabase.auth.signInWithPassword({

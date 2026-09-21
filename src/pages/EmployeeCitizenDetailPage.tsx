@@ -10,6 +10,7 @@ import {
   getCitizenDeclarations,
   getCitizenAppointments,
   getCitizenTransactions,
+  issueActivationCode,
 } from "../services/employee-citizen.service";
 import {
   getCurrentEmployee,
@@ -34,6 +35,10 @@ export default function EmployeeCitizenDetailPage() {
   const [selectedTypeId, setSelectedTypeId] = useState("");
   const [notes, setNotes] = useState("");
   const [isCreating, setIsCreating] = useState(false);
+  const [activation, setActivation] = useState<{ code: string; expiresAt: string } | null>(null);
+  const [isIssuing, setIsIssuing] = useState(false);
+  const [activationError, setActivationError] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
   const [feedback, setFeedback] = useState<{ type: "success" | "error"; text: string } | null>(
     null
   );
@@ -91,6 +96,35 @@ export default function EmployeeCitizenDetailPage() {
     setSelectedTypeId("");
     setNotes("");
     await loadAll();
+  }
+
+  async function handleIssueActivation() {
+    if (!citizen) return;
+    setIsIssuing(true);
+    setActivationError(null);
+    setCopied(false);
+
+    const result = await issueActivationCode(citizen.id);
+
+    setIsIssuing(false);
+
+    if (!result.success || !result.code) {
+      setActivation(null);
+      setActivationError(result.message ?? "تعذر إصدار رمز التفعيل");
+      return;
+    }
+
+    setActivation({ code: result.code, expiresAt: result.expiresAt ?? "" });
+  }
+
+  async function handleCopyCode() {
+    if (!activation) return;
+    try {
+      await navigator.clipboard.writeText(activation.code);
+      setCopied(true);
+    } catch {
+      setCopied(false);
+    }
   }
 
   if (isLoading) {
@@ -176,6 +210,55 @@ export default function EmployeeCitizenDetailPage() {
               ))}
             </div>
           )}
+        </section>
+
+        <section className="rounded-2xl border border-line bg-surface p-5 shadow-card">
+          <h2 className="mb-1 text-sm font-bold text-ink">تفعيل حساب المواطن</h2>
+          <p className="mb-3 text-[13px] font-medium text-ink-soft">
+            تحقق من هوية المواطن أولًا، ثم أصدر له رمزًا يستعمله مرة واحدة لتعيين رقمه السري.
+            الرمز صالح 72 ساعة، ويظهر لك الآن فقط.
+          </p>
+
+          {citizen.status !== "active" && (
+            <p className="mb-3 text-[13px] font-semibold text-danger">
+              لا يمكن إصدار رمز لحساب غير نشط
+            </p>
+          )}
+
+          {activation && (
+            <div className="mb-3 rounded-xl bg-primary/5 p-4 text-center">
+              <p className="text-xs font-semibold text-ink-soft">رمز التفعيل</p>
+              <p dir="ltr" className="mt-1 text-2xl font-extrabold tracking-widest tabular-nums text-ink">
+                {activation.code}
+              </p>
+              {activation.expiresAt && (
+                <p className="mt-1 text-[12px] font-medium text-ink-soft">
+                  صالح حتى {new Date(activation.expiresAt).toLocaleString("ar")}
+                </p>
+              )}
+              <button
+                type="button"
+                onClick={handleCopyCode}
+                className="mt-2 text-sm font-semibold text-primary hover:underline"
+              >
+                {copied ? "تم النسخ" : "نسخ الرمز"}
+              </button>
+            </div>
+          )}
+
+          {activationError && (
+            <div className="mb-3 rounded-xl bg-danger-light p-3 text-center text-[13px] font-semibold text-danger">
+              {activationError}
+            </div>
+          )}
+
+          <Button
+            onClick={handleIssueActivation}
+            isLoading={isIssuing}
+            disabled={citizen.status !== "active"}
+          >
+            {activation ? "إصدار رمز جديد (يلغي السابق)" : "إصدار رمز تفعيل"}
+          </Button>
         </section>
 
         <section className="rounded-2xl border border-line bg-surface p-5 shadow-card">
