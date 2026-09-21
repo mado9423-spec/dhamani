@@ -8,6 +8,7 @@ import {
   getCitizenDeclarations,
   getCitizenAppointments,
   getCitizenTransactions,
+  issueActivationCode,
 } from "../services/employee-citizen.service";
 import {
   getCurrentEmployee,
@@ -83,6 +84,11 @@ export default function EmployeeCitizenDetailPage() {
   const [viewingDocId, setViewingDocId] = useState<string | null>(null);
   const [viewDocError, setViewDocError] = useState<string | null>(null);
   const [auditLogs, setAuditLogs] = useState<AuditLogEntry[]>([]);
+
+  const [activation, setActivation] = useState<{ code: string; expiresAt: string } | null>(null);
+  const [isIssuing, setIsIssuing] = useState(false);
+  const [activationError, setActivationError] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
 
   function handleDocumentReady(file: File, source: IntakeSource) {
     if (capturedDoc) URL.revokeObjectURL(capturedDoc.previewUrl);
@@ -243,6 +249,35 @@ export default function EmployeeCitizenDetailPage() {
     setTransitioningId(null);
     if (result.success) {
       await loadAll();
+    }
+  }
+
+  async function handleIssueActivation() {
+    if (!citizen) return;
+    setIsIssuing(true);
+    setActivationError(null);
+    setCopied(false);
+
+    const result = await issueActivationCode(citizen.id);
+
+    setIsIssuing(false);
+
+    if (!result.success || !result.code) {
+      setActivation(null);
+      setActivationError(result.message ?? "تعذر إصدار رمز التفعيل");
+      return;
+    }
+
+    setActivation({ code: result.code, expiresAt: result.expiresAt ?? "" });
+  }
+
+  async function handleCopyCode() {
+    if (!activation) return;
+    try {
+      await navigator.clipboard.writeText(activation.code);
+      setCopied(true);
+    } catch {
+      setCopied(false);
     }
   }
 
@@ -510,6 +545,55 @@ export default function EmployeeCitizenDetailPage() {
             )}
           </section>
         )}
+
+        <section className="rounded-2xl border border-[#E2E7EB] bg-white p-5">
+          <h2 className="mb-1 text-sm font-bold text-[#17212B]">تفعيل حساب المواطن</h2>
+          <p className="mb-3 text-[13px] font-medium text-[#687581]">
+            تحقق من هوية المواطن أولًا، ثم أصدر له رمزًا يستعمله مرة واحدة لتعيين رقمه السري.
+            الرمز صالح 72 ساعة، ويظهر لك الآن فقط.
+          </p>
+
+          {citizen.status !== "active" && (
+            <p className="mb-3 text-[13px] font-semibold text-[#C0392B]">
+              لا يمكن إصدار رمز لحساب غير نشط
+            </p>
+          )}
+
+          {activation && (
+            <div className="mb-3 rounded-xl bg-[#123F63]/5 p-4 text-center">
+              <p className="text-xs font-semibold text-[#687581]">رمز التفعيل</p>
+              <p dir="ltr" className="mt-1 text-2xl font-extrabold tracking-widest text-[#17212B]">
+                {activation.code}
+              </p>
+              {activation.expiresAt && (
+                <p className="mt-1 text-[12px] font-medium text-[#687581]">
+                  صالح حتى {new Date(activation.expiresAt).toLocaleString("ar")}
+                </p>
+              )}
+              <button
+                type="button"
+                onClick={handleCopyCode}
+                className="mt-2 text-sm font-semibold text-[#123F63] hover:underline"
+              >
+                {copied ? "تم النسخ" : "نسخ الرمز"}
+              </button>
+            </div>
+          )}
+
+          {activationError && (
+            <div className="mb-3 rounded-xl bg-[#FBEAE8] p-3 text-center text-[13px] font-semibold text-[#C0392B]">
+              {activationError}
+            </div>
+          )}
+
+          <Button
+            onClick={handleIssueActivation}
+            isLoading={isIssuing}
+            disabled={citizen.status !== "active"}
+          >
+            {activation ? "إصدار رمز جديد (يلغي السابق)" : "إصدار رمز تفعيل"}
+          </Button>
+        </section>
 
         <section className="rounded-2xl border border-[#E2E7EB] bg-white p-5">
           <h2 className="mb-3 text-sm font-bold text-[#17212B]">إنشاء معاملة جديدة</h2>
