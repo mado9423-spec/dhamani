@@ -4,6 +4,7 @@ import { CitizenProfile, ServiceItem } from "../types/service";
 import { ServiceCard } from "../components/ServiceCard";
 import { BottomNav } from "../components/BottomNav";
 import { Logo } from "../components/Logo";
+import { PageShell } from "../components/PageShell";
 
 const services: ServiceItem[] = [
   {
@@ -28,6 +29,7 @@ const services: ServiceItem[] = [
     description: "تتبع حالة معاملاتك",
     icon: "list-check",
     path: "/transactions",
+    accent: "teal",
   },
   {
     id: "declaration_appointment",
@@ -35,6 +37,7 @@ const services: ServiceItem[] = [
     description: "احجز موعداً بالفرع",
     icon: "calendar",
     path: "/appointments/declaration",
+    accent: "violet",
   },
   {
     id: "advance_appointment",
@@ -42,6 +45,7 @@ const services: ServiceItem[] = [
     description: "حجز موعد استلام السلفة",
     icon: "cash",
     path: "/appointments/advance",
+    accent: "success",
   },
   {
     id: "new_pension_appointment",
@@ -49,6 +53,7 @@ const services: ServiceItem[] = [
     description: "حجز موعد أول صرف",
     icon: "calendar-plus",
     path: "/appointments/new-pension",
+    accent: "rose",
   },
   {
     id: "profile",
@@ -56,6 +61,7 @@ const services: ServiceItem[] = [
     description: "بياناتك الشخصية",
     icon: "user",
     path: "/profile",
+    accent: "cyan",
   },
   {
     id: "military_transactions",
@@ -63,6 +69,7 @@ const services: ServiceItem[] = [
     description: "خدمات المتقاعدين العسكريين",
     icon: "shield-check",
     path: "/transactions/military",
+    accent: "accent",
   },
 ];
 
@@ -86,17 +93,20 @@ export default function HomePage() {
   const gridServices = services.filter((s) => !s.featured && !s.fullWidth);
 
   return (
-    <div dir="rtl" className="min-h-screen bg-[#F3F5F8] pb-24 font-cairo">
-      <header className="bg-[#F6F8FA] px-6 pb-5 pt-8 shadow-[0_1px_0_0_#E2E7EB]">
-        <div className="mb-4 flex items-center gap-2">
+    <PageShell className="pb-24">
+      <header className="relative overflow-hidden bg-gradient-to-br from-primary-dark via-primary to-primary-bright px-6 pb-7 pt-8">
+        <div className="pointer-events-none absolute -left-10 -top-16 h-40 w-40 rounded-full bg-white/10 blur-2xl" />
+        <div className="pointer-events-none absolute -right-6 bottom-0 h-28 w-28 rounded-full bg-accent/20 blur-xl" />
+
+        <div className="relative mb-5 flex items-center gap-2">
           <Logo size="sm" />
-          <span className="text-sm font-bold text-[#123F63]">
+          <span className="text-sm font-bold text-white">
             صندوق الضمان الاجتماعي
           </span>
         </div>
 
         <p
-          className={`text-sm font-medium text-[#687581] transition-opacity duration-500 ${
+          className={`relative text-sm font-medium text-white/70 transition-opacity duration-500 ${
             showGreeting ? "opacity-100" : "h-0 opacity-0"
           }`}
         >
@@ -104,25 +114,25 @@ export default function HomePage() {
         </p>
 
         {isLoading ? (
-          <div className="mt-1 h-7 w-40 animate-shimmer rounded-md skeleton-shimmer" />
+          <div className="relative mt-1 h-7 w-40 animate-pulse rounded-md bg-white/15" />
         ) : (
           <>
-            <h1 className="mt-1 text-xl font-extrabold text-[#17212B]">
+            <h1 className="relative mt-1 text-xl font-extrabold tracking-tight text-white">
               {citizen?.fullName ?? "مواطن"}
             </h1>
-            <div className="mt-2 h-[3px] w-10 rounded-full bg-[#B8860B]" />
+            <div className="relative mt-2 h-[3px] w-10 rounded-full bg-accent" />
           </>
         )}
       </header>
 
-      <main className="flex flex-col gap-3 px-6 pt-5">
+      <main className="flex flex-col gap-3 px-6 pt-6">
         {featuredService && (
-          <div className="animate-fade-in-up">
+          <div className="animate-rise-in" style={{ animationDelay: "50ms" }}>
             <ServiceCard service={featuredService} />
           </div>
         )}
         {fullWidthService && (
-          <div className="animate-fade-in-up [animation-delay:60ms]">
+          <div className="animate-rise-in" style={{ animationDelay: "100ms" }}>
             <ServiceCard service={fullWidthService} />
           </div>
         )}
@@ -131,8 +141,8 @@ export default function HomePage() {
           {gridServices.map((service, index) => (
             <div
               key={service.id}
-              className="animate-fade-in-up"
-              style={{ animationDelay: `${120 + index * 40}ms` }}
+              className="animate-rise-in"
+              style={{ animationDelay: `${150 + index * 60}ms` }}
             >
               <ServiceCard service={service} />
             </div>
@@ -141,6 +151,6 @@ export default function HomePage() {
       </main>
 
       <BottomNav />
-    </div>
+    </PageShell>
   );
 }

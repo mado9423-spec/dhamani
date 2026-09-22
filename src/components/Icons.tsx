@@ -15,7 +15,8 @@ export type IconName =
   | "bell"
   | "home"
   | "list"
-  | "check-circle";
+  | "check-circle"
+  | "chevron-back";
 
 const PATHS: Record<IconName, string> = {
   "file-check":
@@ -36,6 +37,7 @@ const PATHS: Record<IconName, string> = {
   list: "M4 6h16 M4 12h16 M4 18h10",
   "check-circle":
     "M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18Z M8.5 12.3l2.3 2.3 4.7-4.7",
+  "chevron-back": "M10 6l6 6-6 6",
 };
 
 export function Icon({ name, size = 20, className = "" }: IconProps) {

@@ -15,14 +15,14 @@ export function Button({
   ...rest
 }: ButtonProps) {
   const base =
-    "h-12 w-full rounded-xl font-bold text-base transition-all duration-200 flex items-center justify-center gap-2 active:scale-[0.98] disabled:cursor-not-allowed disabled:shadow-none";
+    "h-12 w-full rounded-xl font-bold text-base transition-all duration-200 flex items-center justify-center gap-2 hover:-translate-y-px active:translate-y-0 active:scale-[0.98] disabled:cursor-not-allowed disabled:hover:translate-y-0";
 
   const variants: Record<string, string> = {
     primary:
-      "bg-[#123F63] text-white shadow-sm hover:bg-[#0B2D47] hover:shadow-md disabled:bg-gray-300 disabled:text-gray-500",
+      "bg-gradient-to-l from-primary to-primary-bright text-white shadow-card hover:brightness-110 disabled:bg-none disabled:bg-line disabled:text-ink-faint disabled:shadow-none",
     secondary:
-      "bg-white text-[#123F63] border border-[#123F63] hover:bg-[#E8EEF4]",
-    ghost: "bg-transparent text-[#123F63] hover:bg-[#E8EEF4]",
+      "bg-white text-primary border border-primary/25 hover:border-primary hover:bg-primary-light",
+    ghost: "bg-transparent text-primary hover:bg-primary-light",
   };
 
   return (

@@ -6,16 +6,29 @@
   font-family: "Cairo", sans-serif;
 }
 
+html {
+  scroll-behavior: smooth;
+}
+
 body {
   margin: 0;
-  background-color: #f6f8fa;
+  background-color: #eef1f5;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
 }
 
 :focus-visible {
   outline: 2px solid #123f63;
   outline-offset: 2px;
+  border-radius: 4px;
 }
 
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Kept for pages not yet migrated to the new design system. Remove once
+   every loading skeleton uses the new shimmer utility classes instead. */
 .skeleton-shimmer {
   background: linear-gradient(90deg, #e2e7eb 25%, #eef1f4 50%, #e2e7eb 75%);
   background-size: 200% 100%;
