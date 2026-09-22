@@ -3,6 +3,8 @@ import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { Button } from "../components/ui/Button";
 import { Select } from "../components/ui/Select";
 import { StatusBadge, TransactionStatus } from "../components/StatusBadge";
+import { PageShell } from "../components/PageShell";
+import { PageHeader } from "../components/PageHeader";
 import {
   getCitizenById,
   getCitizenDeclarations,
@@ -283,50 +285,45 @@ export default function EmployeeCitizenDetailPage() {
 
   if (isLoading) {
     return (
-      <div dir="rtl" className="flex min-h-screen items-center justify-center bg-[#F5F6F7]">
-        <div className="h-8 w-8 animate-spin rounded-full border-2 border-[#E2E7EB] border-t-[#123F63]" />
-      </div>
+      <PageShell className="items-center justify-center">
+        <div className="h-8 w-8 animate-spin rounded-full border-2 border-line border-t-primary" />
+      </PageShell>
     );
   }
 
   if (!citizen) {
     return (
-      <div dir="rtl" className="flex min-h-screen items-center justify-center bg-[#F5F6F7] px-6 text-center">
-        <p className="text-sm font-semibold text-[#C0392B]">تعذر العثور على هذا المواطن</p>
-      </div>
+      <PageShell className="items-center justify-center px-6 text-center">
+        <p className="text-sm font-semibold text-danger">تعذر العثور على هذا المواطن</p>
+      </PageShell>
     );
   }
 
   return (
-    <div dir="rtl" className="min-h-screen bg-[#F5F6F7] pb-10 font-cairo">
-      <header className="flex items-center gap-3 bg-[#17212B] px-6 py-4">
-        <button onClick={() => navigate(-1)} aria-label="رجوع" className="text-white">
-          ←
-        </button>
-        <h1 className="text-base font-bold text-white">ملف المواطن</h1>
-      </header>
+    <PageShell className="pb-10">
+      <PageHeader title="ملف المواطن" tone="dark" />
 
       <main className="flex flex-col gap-4 px-6 py-5">
-        <section className="rounded-2xl border border-[#E2E7EB] bg-white p-5">
-          <p className="text-xs font-semibold text-[#687581]">الاسم الرباعي</p>
-          <p className="mt-1 text-base font-bold text-[#17212B]">{citizen.full_name}</p>
-          <div className="my-3 h-px bg-[#E2E7EB]" />
-          <p className="text-xs font-semibold text-[#687581]">رقم المعاش</p>
-          <p className="mt-1 text-base font-bold text-[#17212B]">{citizen.pension_number}</p>
-          <div className="my-3 h-px bg-[#E2E7EB]" />
-          <p className="text-xs font-semibold text-[#687581]">الحالة</p>
-          <p className="mt-1 text-base font-bold text-[#16803C]">
+        <section className="rounded-2xl border border-line bg-white p-5">
+          <p className="text-xs font-semibold text-ink-soft">الاسم الرباعي</p>
+          <p className="mt-1 text-base font-bold text-ink">{citizen.full_name}</p>
+          <div className="my-3 h-px bg-line" />
+          <p className="text-xs font-semibold text-ink-soft">رقم المعاش</p>
+          <p className="mt-1 text-base font-bold text-ink">{citizen.pension_number}</p>
+          <div className="my-3 h-px bg-line" />
+          <p className="text-xs font-semibold text-ink-soft">الحالة</p>
+          <p className="mt-1 text-base font-bold text-success">
             {citizen.status === "active" ? "نشط" : citizen.status === "suspended" ? "موقوف" : "مؤرشف"}
           </p>
         </section>
 
-        <section className="rounded-2xl border border-[#E2E7EB] bg-white p-5">
+        <section className="rounded-2xl border border-line bg-white p-5">
           <div className="flex items-center justify-between">
-            <h2 className="text-sm font-bold text-[#17212B]">ملف جديد</h2>
+            <h2 className="text-sm font-bold text-ink">ملف جديد</h2>
             {!showIntake && (
               <button
                 onClick={() => setShowIntake(true)}
-                className="text-[13px] font-bold text-[#123F63]"
+                className="text-[13px] font-bold text-primary"
               >
                 + إضافة مستند
               </button>
@@ -338,7 +335,7 @@ export default function EmployeeCitizenDetailPage() {
               <IntakePanel onDocumentReady={handleDocumentReady} />
               <button
                 onClick={() => setShowIntake(false)}
-                className="mt-3 text-[13px] font-semibold text-[#687581]"
+                className="mt-3 text-[13px] font-semibold text-ink-soft"
               >
                 إلغاء
               </button>
@@ -346,9 +343,9 @@ export default function EmployeeCitizenDetailPage() {
           )}
 
           {capturedDoc && ocrExtraction.status === "processing" && (
-            <div className="mt-4 flex items-center gap-3 rounded-xl border border-[#E2E7EB] bg-[#FAFBFC] p-3">
-              <div className="h-4 w-4 shrink-0 animate-spin rounded-full border-2 border-[#E2E7EB] border-t-[#123F63]" />
-              <p className="truncate text-[13px] font-semibold text-[#687581]">
+            <div className="mt-4 flex items-center gap-3 rounded-xl border border-line bg-line-soft p-3">
+              <div className="h-4 w-4 shrink-0 animate-spin rounded-full border-2 border-line border-t-primary" />
+              <p className="truncate text-[13px] font-semibold text-ink-soft">
                 جارٍ تحليل «{capturedDoc.file.name}» بواسطة OCR...
               </p>
             </div>
@@ -357,17 +354,17 @@ export default function EmployeeCitizenDetailPage() {
           {capturedDoc && ocrExtraction.status !== "processing" && (
             <div className="mt-4">
               {ocrExtraction.status === "unsupported" && (
-                <p className="mb-3 text-[13px] font-semibold text-[#B8860B]">
+                <p className="mb-3 text-[13px] font-semibold text-accent">
                   صيغة الملف غير مدعومة للاستخراج التلقائي، يرجى إدخال الحقول يدوياً
                 </p>
               )}
               {ocrExtraction.status === "error" && (
-                <p className="mb-3 text-[13px] font-semibold text-[#C0392B]">
+                <p className="mb-3 text-[13px] font-semibold text-danger">
                   {ocrExtraction.errorMessage}
                 </p>
               )}
               {ocrExtraction.status === "done" && ocrExtraction.data && (
-                <p className="mb-3 text-[13px] font-semibold text-[#687581]">
+                <p className="mb-3 text-[13px] font-semibold text-ink-soft">
                   نسبة ثقة الاستخراج: {Math.round(ocrExtraction.data.confidenceScore * 100)}% — راجع
                   الحقول أدناه قبل الاعتماد
                 </p>
@@ -387,8 +384,8 @@ export default function EmployeeCitizenDetailPage() {
             <div
               className={`mt-3 rounded-xl p-3 text-center text-[13px] font-semibold ${
                 saveDocFeedback.type === "success"
-                  ? "bg-[#EAF7F0] text-[#16803C]"
-                  : "bg-[#FBEAE8] text-[#C0392B]"
+                  ? "bg-success-light text-success"
+                  : "bg-danger-light text-danger"
               }`}
             >
               {saveDocFeedback.text}
@@ -397,13 +394,13 @@ export default function EmployeeCitizenDetailPage() {
         </section>
 
         <section>
-          <h2 className="mb-2 text-sm font-bold text-[#17212B]">الإقرارات السنوية</h2>
+          <h2 className="mb-2 text-sm font-bold text-ink">الإقرارات السنوية</h2>
           {declarations.length === 0 ? (
-            <p className="text-[13px] font-medium text-[#9CA3AF]">لا توجد إقرارات مسجّلة</p>
+            <p className="text-[13px] font-medium text-ink-faint">لا توجد إقرارات مسجّلة</p>
           ) : (
             <div className="flex flex-col gap-2">
               {declarations.map((d) => (
-                <div key={d.id} className="rounded-xl border border-[#E2E7EB] bg-white p-3 text-[13px] font-semibold text-[#17212B]">
+                <div key={d.id} className="rounded-xl border border-line bg-white p-3 text-[13px] font-semibold text-ink">
                   إقرار {d.declaration_year} — {d.status === "completed" ? "مكتمل" : "قيد التنفيذ"}
                 </div>
               ))}
@@ -412,13 +409,13 @@ export default function EmployeeCitizenDetailPage() {
         </section>
 
         <section>
-          <h2 className="mb-2 text-sm font-bold text-[#17212B]">المواعيد</h2>
+          <h2 className="mb-2 text-sm font-bold text-ink">المواعيد</h2>
           {appointments.length === 0 ? (
-            <p className="text-[13px] font-medium text-[#9CA3AF]">لا توجد مواعيد</p>
+            <p className="text-[13px] font-medium text-ink-faint">لا توجد مواعيد</p>
           ) : (
             <div className="flex flex-col gap-2">
               {appointments.map((a) => (
-                <div key={a.id} className="rounded-xl border border-[#E2E7EB] bg-white p-3 text-[13px] font-semibold text-[#17212B]">
+                <div key={a.id} className="rounded-xl border border-line bg-white p-3 text-[13px] font-semibold text-ink">
                   {a.appointment_date} — {a.appointment_time}
                 </div>
               ))}
@@ -427,18 +424,18 @@ export default function EmployeeCitizenDetailPage() {
         </section>
 
         <section>
-          <h2 className="mb-2 text-sm font-bold text-[#17212B]">المعاملات</h2>
+          <h2 className="mb-2 text-sm font-bold text-ink">المعاملات</h2>
           {transactions.length === 0 ? (
-            <p className="text-[13px] font-medium text-[#9CA3AF]">لا توجد معاملات</p>
+            <p className="text-[13px] font-medium text-ink-faint">لا توجد معاملات</p>
           ) : (
             <div className="flex flex-col gap-3">
               {transactions.map((t) => {
                 const status = t.status as TransactionStatus;
                 const isTransitioning = transitioningId === t.id;
                 return (
-                  <div key={t.id} className="rounded-xl border border-[#E2E7EB] bg-white p-3">
+                  <div key={t.id} className="rounded-xl border border-line bg-white p-3">
                     <div className="flex items-center justify-between">
-                      <span className="text-[13px] font-semibold text-[#17212B]">
+                      <span className="text-[13px] font-semibold text-ink">
                         {t.transaction_types?.name_ar ?? "معاملة"}
                       </span>
                       <StatusBadge status={status} />
@@ -454,7 +451,7 @@ export default function EmployeeCitizenDetailPage() {
                           <button
                             onClick={() => handleTransitionStatus(t.id, status, "accepted")}
                             disabled={isTransitioning}
-                            className="h-9 flex-1 rounded-lg bg-[#123F63] text-[12px] font-bold text-white transition-opacity disabled:opacity-50"
+                            className="h-9 flex-1 rounded-lg bg-primary text-[12px] font-bold text-white transition-opacity disabled:opacity-50"
                           >
                             قبول
                           </button>
@@ -463,7 +460,7 @@ export default function EmployeeCitizenDetailPage() {
                           <button
                             onClick={() => handleTransitionStatus(t.id, status, "completed")}
                             disabled={isTransitioning}
-                            className="h-9 flex-1 rounded-lg bg-[#123F63] text-[12px] font-bold text-white transition-opacity disabled:opacity-50"
+                            className="h-9 flex-1 rounded-lg bg-primary text-[12px] font-bold text-white transition-opacity disabled:opacity-50"
                           >
                             إكمال
                           </button>
@@ -471,7 +468,7 @@ export default function EmployeeCitizenDetailPage() {
                         <button
                           onClick={() => handleTransitionStatus(t.id, status, "rejected")}
                           disabled={isTransitioning}
-                          className="h-9 flex-1 rounded-lg border border-[#E2E7EB] text-[12px] font-bold text-[#C0392B] transition-opacity disabled:opacity-50"
+                          className="h-9 flex-1 rounded-lg border border-line text-[12px] font-bold text-danger transition-opacity disabled:opacity-50"
                         >
                           رفض
                         </button>
@@ -485,28 +482,28 @@ export default function EmployeeCitizenDetailPage() {
         </section>
 
         <section>
-          <h2 className="mb-2 text-sm font-bold text-[#17212B]">المستندات المؤرشفة</h2>
+          <h2 className="mb-2 text-sm font-bold text-ink">المستندات المؤرشفة</h2>
           {archivedDocuments.length === 0 ? (
-            <p className="text-[13px] font-medium text-[#9CA3AF]">لا توجد مستندات مؤرشفة</p>
+            <p className="text-[13px] font-medium text-ink-faint">لا توجد مستندات مؤرشفة</p>
           ) : (
             <div className="flex flex-col gap-2">
               {archivedDocuments.map((doc) => (
                 <div
                   key={doc.id}
-                  className="flex items-center justify-between rounded-xl border border-[#E2E7EB] bg-white p-3"
+                  className="flex items-center justify-between rounded-xl border border-line bg-white p-3"
                 >
                   <div className="min-w-0">
-                    <p className="truncate text-[13px] font-semibold text-[#17212B]">
+                    <p className="truncate text-[13px] font-semibold text-ink">
                       {doc.documentType || doc.originalFilename || "مستند"}
                     </p>
-                    <p className="text-[11px] font-medium text-[#9CA3AF]">
+                    <p className="text-[11px] font-medium text-ink-faint">
                       {DOCUMENT_REVIEW_STATUS_LABELS[doc.reviewStatus] ?? doc.reviewStatus}
                     </p>
                   </div>
                   <button
                     onClick={() => handleViewDocument(doc.storagePath, doc.id)}
                     disabled={viewingDocId === doc.id}
-                    className="shrink-0 text-[13px] font-bold text-[#123F63] disabled:opacity-50"
+                    className="shrink-0 text-[13px] font-bold text-primary disabled:opacity-50"
                   >
                     {viewingDocId === doc.id ? "..." : "عرض"}
                   </button>
@@ -515,27 +512,27 @@ export default function EmployeeCitizenDetailPage() {
             </div>
           )}
           {viewDocError && (
-            <p className="mt-2 text-[13px] font-semibold text-[#C0392B]">{viewDocError}</p>
+            <p className="mt-2 text-[13px] font-semibold text-danger">{viewDocError}</p>
           )}
         </section>
 
         {(employee?.role === "admin" || employee?.role === "supervisor") && (
           <section>
-            <h2 className="mb-2 text-sm font-bold text-[#17212B]">سجل التدقيق</h2>
+            <h2 className="mb-2 text-sm font-bold text-ink">سجل التدقيق</h2>
             {auditLogs.length === 0 ? (
-              <p className="text-[13px] font-medium text-[#9CA3AF]">لا توجد سجلات تدقيق</p>
+              <p className="text-[13px] font-medium text-ink-faint">لا توجد سجلات تدقيق</p>
             ) : (
               <div className="flex flex-col gap-2">
                 {auditLogs.map((log) => (
                   <div
                     key={log.id}
-                    className="rounded-xl border border-[#E2E7EB] bg-white p-3 text-[13px]"
+                    className="rounded-xl border border-line bg-white p-3 text-[13px]"
                   >
                     <div className="flex items-center justify-between">
-                      <span className="font-bold text-[#17212B]">
+                      <span className="font-bold text-ink">
                         {AUDIT_ACTION_LABELS[log.action] ?? log.action}
                       </span>
-                      <span className="text-[11px] font-medium text-[#9CA3AF]">
+                      <span className="text-[11px] font-medium text-ink-faint">
                         {new Date(log.createdAt).toLocaleString("ar-LY")}
                       </span>
                     </div>
@@ -546,34 +543,34 @@ export default function EmployeeCitizenDetailPage() {
           </section>
         )}
 
-        <section className="rounded-2xl border border-[#E2E7EB] bg-white p-5">
-          <h2 className="mb-1 text-sm font-bold text-[#17212B]">تفعيل حساب المواطن</h2>
-          <p className="mb-3 text-[13px] font-medium text-[#687581]">
+        <section className="rounded-2xl border border-line bg-white p-5">
+          <h2 className="mb-1 text-sm font-bold text-ink">تفعيل حساب المواطن</h2>
+          <p className="mb-3 text-[13px] font-medium text-ink-soft">
             تحقق من هوية المواطن أولًا، ثم أصدر له رمزًا يستعمله مرة واحدة لتعيين رقمه السري.
             الرمز صالح 72 ساعة، ويظهر لك الآن فقط.
           </p>
 
           {citizen.status !== "active" && (
-            <p className="mb-3 text-[13px] font-semibold text-[#C0392B]">
+            <p className="mb-3 text-[13px] font-semibold text-danger">
               لا يمكن إصدار رمز لحساب غير نشط
             </p>
           )}
 
           {activation && (
-            <div className="mb-3 rounded-xl bg-[#123F63]/5 p-4 text-center">
-              <p className="text-xs font-semibold text-[#687581]">رمز التفعيل</p>
-              <p dir="ltr" className="mt-1 text-2xl font-extrabold tracking-widest text-[#17212B]">
+            <div className="mb-3 rounded-xl bg-primary/5 p-4 text-center">
+              <p className="text-xs font-semibold text-ink-soft">رمز التفعيل</p>
+              <p dir="ltr" className="mt-1 text-2xl font-extrabold tracking-widest text-ink">
                 {activation.code}
               </p>
               {activation.expiresAt && (
-                <p className="mt-1 text-[12px] font-medium text-[#687581]">
+                <p className="mt-1 text-[12px] font-medium text-ink-soft">
                   صالح حتى {new Date(activation.expiresAt).toLocaleString("ar")}
                 </p>
               )}
               <button
                 type="button"
                 onClick={handleCopyCode}
-                className="mt-2 text-sm font-semibold text-[#123F63] hover:underline"
+                className="mt-2 text-sm font-semibold text-primary hover:underline"
               >
                 {copied ? "تم النسخ" : "نسخ الرمز"}
               </button>
@@ -581,7 +578,7 @@ export default function EmployeeCitizenDetailPage() {
           )}
 
           {activationError && (
-            <div className="mb-3 rounded-xl bg-[#FBEAE8] p-3 text-center text-[13px] font-semibold text-[#C0392B]">
+            <div className="mb-3 rounded-xl bg-danger-light p-3 text-center text-[13px] font-semibold text-danger">
               {activationError}
             </div>
           )}
@@ -595,8 +592,8 @@ export default function EmployeeCitizenDetailPage() {
           </Button>
         </section>
 
-        <section className="rounded-2xl border border-[#E2E7EB] bg-white p-5">
-          <h2 className="mb-3 text-sm font-bold text-[#17212B]">إنشاء معاملة جديدة</h2>
+        <section className="rounded-2xl border border-line bg-white p-5">
+          <h2 className="mb-3 text-sm font-bold text-ink">إنشاء معاملة جديدة</h2>
 
           <Select
             id="txnType"
@@ -607,7 +604,7 @@ export default function EmployeeCitizenDetailPage() {
             onChange={(e) => setSelectedTypeId(e.target.value)}
           />
 
-          <label htmlFor="notes" className="mb-1.5 mt-4 block text-sm font-semibold text-[#17212B]">
+          <label htmlFor="notes" className="mb-1.5 mt-4 block text-sm font-semibold text-ink">
             ملاحظات (اختياري)
           </label>
           <textarea
@@ -615,15 +612,15 @@ export default function EmployeeCitizenDetailPage() {
             value={notes}
             onChange={(e) => setNotes(e.target.value)}
             rows={3}
-            className="w-full rounded-xl border border-[#E2E7EB] p-3 text-sm font-medium text-[#17212B] outline-none focus:border-[#123F63]"
+            className="w-full rounded-xl border border-line p-3 text-sm font-medium text-ink outline-none focus:border-primary"
           />
 
           {feedback && (
             <div
               className={`mt-3 rounded-xl p-3 text-center text-[13px] font-semibold ${
                 feedback.type === "success"
-                  ? "bg-[#EAF7F0] text-[#16803C]"
-                  : "bg-[#FBEAE8] text-[#C0392B]"
+                  ? "bg-success-light text-success"
+                  : "bg-danger-light text-danger"
               }`}
             >
               {feedback.text}
@@ -640,6 +637,6 @@ export default function EmployeeCitizenDetailPage() {
           </Button>
         </section>
       </main>
-    </div>
+    </PageShell>
   );
 }
