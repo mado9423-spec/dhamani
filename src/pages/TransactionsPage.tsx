@@ -2,6 +2,8 @@ import { useEffect, useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { BottomNav } from "../components/BottomNav";
 import { StatusBadge } from "../components/StatusBadge";
+import { PageShell } from "../components/PageShell";
+import { PageHeader } from "../components/PageHeader";
 import {
   listMyTransactions,
   formatArabicDate,
@@ -28,15 +30,8 @@ export default function TransactionsPage() {
     : transactions;
 
   return (
-    <div dir="rtl" className="min-h-screen bg-[#F6F8FA] pb-24 font-cairo">
-      <header className="flex items-center gap-3 border-b border-[#E2E7EB] px-6 py-4">
-        <button onClick={() => navigate(-1)} aria-label="رجوع" className="text-[#17212B]">
-          ←
-        </button>
-        <h1 className="text-base font-bold text-[#17212B]">
-          {isMilitaryOnly ? "معاملات التقاعد العسكري" : "متابعة المعاملات"}
-        </h1>
-      </header>
+    <PageShell className="pb-24">
+      <PageHeader title={isMilitaryOnly ? "معاملات التقاعد العسكري" : "متابعة المعاملات"} />
 
       <main className="px-6 py-4">
         {isLoading && (
@@ -49,11 +44,11 @@ export default function TransactionsPage() {
 
         {!isLoading && visibleTransactions.length === 0 && (
           <div className="flex animate-fade-in-up flex-col items-center gap-2 pt-16 text-center">
-            <div className="flex h-14 w-14 items-center justify-center rounded-full bg-[#E8EEF4] text-2xl">
+            <div className="flex h-14 w-14 items-center justify-center rounded-full bg-primary-light text-2xl">
               📄
             </div>
-            <p className="text-sm font-bold text-[#17212B]">لا توجد معاملات حتى الآن</p>
-            <p className="max-w-xs text-[13px] font-medium text-[#687581]">
+            <p className="text-sm font-bold text-ink">لا توجد معاملات حتى الآن</p>
+            <p className="max-w-xs text-[13px] font-medium text-ink-soft">
               ستظهر هنا أي معاملة يفتحها لك موظف الفرع.
             </p>
           </div>
@@ -64,18 +59,18 @@ export default function TransactionsPage() {
             {visibleTransactions.map((t) => (
               <div
                 key={t.id}
-                className="flex flex-col gap-2 rounded-2xl border border-[#E2E7EB] bg-white p-4"
+                className="flex flex-col gap-2 rounded-2xl border border-line bg-white p-4"
               >
                 <div className="flex items-start justify-between">
                   <div>
-                    <p className="text-sm font-bold text-[#17212B]">{t.typeName}</p>
-                    <p className="mt-0.5 text-[12px] font-medium text-[#687581]">
+                    <p className="text-sm font-bold text-ink">{t.typeName}</p>
+                    <p className="mt-0.5 text-[12px] font-medium text-ink-soft">
                       رقم المعاملة: {t.transactionNumber}
                     </p>
                   </div>
                   <StatusBadge status={t.status} />
                 </div>
-                <div className="flex justify-between border-t border-[#F3F4F6] pt-2 text-[12px] font-medium text-[#9CA3AF]">
+                <div className="flex justify-between border-t border-line-soft pt-2 text-[12px] font-medium text-ink-faint">
                   <span>تاريخ الإنشاء: {formatArabicDate(t.createdAt)}</span>
                   <span>آخر تحديث: {formatArabicDate(t.updatedAt)}</span>
                 </div>
@@ -86,6 +81,6 @@ export default function TransactionsPage() {
       </main>
 
       <BottomNav />
-    </div>
+    </PageShell>
   );
 }

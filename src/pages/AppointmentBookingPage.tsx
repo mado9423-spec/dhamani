@@ -5,6 +5,8 @@ import { getCurrentCitizen } from "../services/citizen.service";
 import { CitizenProfile } from "../types/service";
 import { generateAvailableSlots, AppointmentSlot } from "../services/declaration.service";
 import { createAppointment, AppointmentType } from "../services/appointment.service";
+import { PageShell } from "../components/PageShell";
+import { PageHeader } from "../components/PageHeader";
 
 type UrlType = "advance" | "new-pension" | "declaration";
 
@@ -73,40 +75,35 @@ export default function AppointmentBookingPage() {
 
   if (!config) {
     return (
-      <div dir="rtl" className="flex min-h-screen items-center justify-center bg-[#F6F8FA] px-6 text-center">
-        <p className="text-sm font-semibold text-[#C0392B]">نوع موعد غير معروف</p>
-      </div>
+      <PageShell className="items-center justify-center px-6 text-center">
+        <p className="text-sm font-semibold text-danger">نوع موعد غير معروف</p>
+      </PageShell>
     );
   }
 
   if (isLoading) {
     return (
-      <div dir="rtl" className="flex min-h-screen items-center justify-center bg-[#F6F8FA]">
-        <div className="h-8 w-8 animate-spin rounded-full border-2 border-[#E2E7EB] border-t-[#123F63]" />
-      </div>
+      <PageShell className="items-center justify-center">
+        <div className="h-8 w-8 animate-spin rounded-full border-2 border-line border-t-primary" />
+      </PageShell>
     );
   }
 
   return (
-    <div dir="rtl" className="min-h-screen bg-[#F6F8FA] font-cairo">
-      <header className="flex items-center gap-3 border-b border-[#E2E7EB] px-6 py-4">
-        <button onClick={() => navigate(-1)} aria-label="رجوع" className="text-[#17212B]">
-          ←
-        </button>
-        <h1 className="text-base font-bold text-[#17212B]">{config.title}</h1>
-      </header>
+    <PageShell>
+      <PageHeader title={config.title} />
 
       <main className="px-6 py-6">
         {isDone ? (
           <div className="flex animate-fade-in-up flex-col items-center gap-3 pt-10 text-center">
-            <div className="flex h-16 w-16 animate-scale-in items-center justify-center rounded-full bg-[#EAF7F0] text-3xl text-[#16803C]">
+            <div className="flex h-16 w-16 animate-scale-in items-center justify-center rounded-full bg-success-light text-3xl text-success">
               ✓
             </div>
-            <p className="text-lg font-extrabold text-[#17212B]">
+            <p className="text-lg font-extrabold text-ink">
               {config.successMessage}
             </p>
             {selectedSlot && (
-              <p className="text-sm font-semibold text-[#687581]">
+              <p className="text-sm font-semibold text-ink-soft">
                 {selectedSlot.label}
               </p>
             )}
@@ -116,10 +113,10 @@ export default function AppointmentBookingPage() {
           </div>
         ) : (
           <div className="flex flex-col gap-4">
-            <p className="text-sm font-semibold text-[#17212B]">اختر الموعد المناسب</p>
+            <p className="text-sm font-semibold text-ink">اختر الموعد المناسب</p>
 
             {errorMessage && (
-              <div className="animate-fade-in-up rounded-xl bg-[#FBEAE8] p-3 text-center text-[13px] font-semibold text-[#C0392B]">
+              <div className="animate-fade-in-up rounded-xl bg-danger-light p-3 text-center text-[13px] font-semibold text-danger">
                 {errorMessage}
               </div>
             )}
@@ -131,8 +128,8 @@ export default function AppointmentBookingPage() {
                   onClick={() => setSelectedSlot(slot)}
                   className={`rounded-xl border p-3 text-right text-sm font-semibold transition-colors ${
                     selectedSlot?.date === slot.date && selectedSlot?.time === slot.time
-                      ? "border-[#123F63] bg-[#E8EEF4] text-[#123F63]"
-                      : "border-[#E2E7EB] bg-white text-[#17212B]"
+                      ? "border-primary bg-primary-light text-primary"
+                      : "border-line bg-white text-ink"
                   }`}
                 >
                   {slot.label}
@@ -151,6 +148,6 @@ export default function AppointmentBookingPage() {
           </div>
         )}
       </main>
-    </div>
+    </PageShell>
   );
 }

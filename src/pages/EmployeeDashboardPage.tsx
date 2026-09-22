@@ -8,6 +8,7 @@ import {
   EmployeeProfile,
   CitizenSearchResult,
 } from "../services/employee.service";
+import { PageShell } from "../components/PageShell";
 
 export default function EmployeeDashboardPage() {
   const navigate = useNavigate();
@@ -61,16 +62,21 @@ export default function EmployeeDashboardPage() {
 
   if (isLoadingEmployee) {
     return (
-      <div dir="rtl" className="flex min-h-screen items-center justify-center bg-[#17212B]">
+      <PageShell
+        bg="bg-gradient-to-br from-primary-dark via-primary to-primary-bright"
+        className="items-center justify-center"
+      >
         <div className="h-8 w-8 animate-spin rounded-full border-2 border-white/20 border-t-white" />
-      </div>
+      </PageShell>
     );
   }
 
   return (
-    <div dir="rtl" className="min-h-screen bg-[#F5F6F7] font-cairo">
-      <header className="animate-fade-in-up bg-[#17212B] px-6 py-5">
-        <div className="flex items-start justify-between">
+    <PageShell>
+      <header className="relative animate-fade-in-up overflow-hidden bg-gradient-to-br from-primary-dark via-primary to-primary-bright px-6 py-5">
+        <div className="pointer-events-none absolute -left-10 -top-16 h-40 w-40 rounded-full bg-white/10 blur-2xl" />
+        <div className="pointer-events-none absolute -right-6 bottom-0 h-24 w-24 rounded-full bg-accent/20 blur-xl" />
+        <div className="relative flex items-start justify-between">
           <div>
             <p className="text-xs font-semibold text-white/60">لوحة الموظف</p>
             <h1 className="mt-1 text-lg font-bold text-white">
@@ -112,27 +118,27 @@ export default function EmployeeDashboardPage() {
           onClick={handleNewFileClick}
           className={`mt-3 w-full rounded-xl border border-dashed py-3 text-sm font-bold transition-colors ${
             newFileMode
-              ? "border-[#123F63] bg-[#E8EEF4] text-[#123F63]"
-              : "border-[#123F63] text-[#123F63]"
+              ? "border-primary bg-primary-light text-primary"
+              : "border-primary text-primary"
           }`}
         >
           + ملف جديد
         </button>
 
         {newFileHint && (
-          <p className="mt-2 text-center text-[13px] font-semibold text-[#B8860B]">
+          <p className="mt-2 text-center text-[13px] font-semibold text-accent">
             {newFileHint}
           </p>
         )}
 
         {newFileMode && results.length > 0 && (
-          <p className="mt-2 text-center text-[13px] font-semibold text-[#123F63]">
+          <p className="mt-2 text-center text-[13px] font-semibold text-primary">
             اختر المواطن أدناه لفتح ملف جديد له
           </p>
         )}
 
         {searched && results.length === 0 && (
-          <div className="mt-6 rounded-2xl bg-[#FBEAE8] p-4 text-center text-sm font-semibold text-[#C0392B]">
+          <div className="mt-6 rounded-2xl bg-danger-light p-4 text-center text-sm font-semibold text-danger">
             لا يوجد مواطن مطابق في نطاق صلاحياتك
           </div>
         )}
@@ -143,23 +149,23 @@ export default function EmployeeDashboardPage() {
               <button
                 key={citizen.id}
                 onClick={() => handleResultClick(citizen.id)}
-                className="animate-fade-in-up rounded-2xl border border-[#E2E7EB] bg-white p-5 text-right shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md active:bg-[#F5F6F7]"
+                className="animate-fade-in-up rounded-2xl border border-line bg-white p-5 text-right shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md active:bg-page"
                 style={{ animationDelay: `${index * 40}ms` }}
               >
-                <p className="text-xs font-semibold text-[#687581]">الاسم الرباعي</p>
-                <p className="mt-1 text-base font-bold text-[#17212B]">{citizen.fullName}</p>
-                <div className="my-3 h-px bg-[#E2E7EB]" />
+                <p className="text-xs font-semibold text-ink-soft">الاسم الرباعي</p>
+                <p className="mt-1 text-base font-bold text-ink">{citizen.fullName}</p>
+                <div className="my-3 h-px bg-line" />
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-xs font-semibold text-[#687581]">رقم المعاش</p>
-                    <p className="mt-1 text-[13px] font-bold text-[#17212B]">
+                    <p className="text-xs font-semibold text-ink-soft">رقم المعاش</p>
+                    <p className="mt-1 text-[13px] font-bold text-ink">
                       {citizen.pensionNumber}
                     </p>
                   </div>
                   {citizen.nationalId && (
                     <div>
-                      <p className="text-xs font-semibold text-[#687581]">الرقم الوطني</p>
-                      <p className="mt-1 text-[13px] font-bold text-[#17212B]">
+                      <p className="text-xs font-semibold text-ink-soft">الرقم الوطني</p>
+                      <p className="mt-1 text-[13px] font-bold text-ink">
                         {citizen.nationalId}
                       </p>
                     </div>
@@ -170,6 +176,6 @@ export default function EmployeeDashboardPage() {
           </div>
         )}
       </main>
-    </div>
+    </PageShell>
   );
 }

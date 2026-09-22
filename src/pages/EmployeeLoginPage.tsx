@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { Button } from "../components/ui/Button";
 import { TextField } from "../components/ui/TextField";
 import { employeeLogin } from "../services/auth.service";
+import { PageShell } from "../components/PageShell";
 
 export default function EmployeeLoginPage() {
   const navigate = useNavigate();
@@ -37,14 +38,14 @@ export default function EmployeeLoginPage() {
   }
 
   return (
-    <div
-      dir="rtl"
-      className="flex min-h-screen flex-col items-center justify-center bg-[#17212B] px-6 font-cairo"
+    <PageShell
+      bg="bg-gradient-to-br from-primary-dark via-primary to-primary-bright"
+      className="items-center justify-center px-6"
     >
       <div className="w-full max-w-sm animate-fade-in-up rounded-2xl bg-white p-8 shadow-xl">
         <div className="mb-8 text-center">
-          <h1 className="text-xl font-bold text-[#17212B]">دخول الموظفين</h1>
-          <p className="mt-1 text-sm text-[#687581]">ضماني — لوحة الموظف</p>
+          <h1 className="text-xl font-bold text-ink">دخول الموظفين</h1>
+          <p className="mt-1 text-sm text-ink-soft">ضماني — لوحة الموظف</p>
         </div>
 
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
@@ -66,7 +67,7 @@ export default function EmployeeLoginPage() {
           />
 
           {error && (
-            <div className="animate-fade-in-up rounded-xl bg-[#FBEAE8] p-3 text-center text-[13px] font-semibold text-[#C0392B]">
+            <div className="animate-fade-in-up rounded-xl bg-danger-light p-3 text-center text-[13px] font-semibold text-danger">
               {error}
             </div>
           )}
@@ -76,6 +77,6 @@ export default function EmployeeLoginPage() {
           </Button>
         </form>
       </div>
-    </div>
+    </PageShell>
   );
 }

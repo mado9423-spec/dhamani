@@ -6,6 +6,8 @@ import {
   NotificationRecord,
 } from "../services/notification.service";
 import { formatArabicDate } from "../services/transaction.service";
+import { PageShell } from "../components/PageShell";
+import { PageHeader } from "../components/PageHeader";
 
 export default function NotificationsPage() {
   const navigate = useNavigate();
@@ -28,13 +30,8 @@ export default function NotificationsPage() {
   }
 
   return (
-    <div dir="rtl" className="min-h-screen bg-[#F6F8FA] font-cairo">
-      <header className="flex items-center gap-3 border-b border-[#E2E7EB] px-6 py-4">
-        <button onClick={() => navigate(-1)} aria-label="رجوع" className="text-[#17212B]">
-          ←
-        </button>
-        <h1 className="text-base font-bold text-[#17212B]">الإشعارات</h1>
-      </header>
+    <PageShell>
+      <PageHeader title="الإشعارات" />
 
       <main className="px-6 py-4">
         {isLoading && (
@@ -47,11 +44,11 @@ export default function NotificationsPage() {
 
         {!isLoading && notifications.length === 0 && (
           <div className="flex animate-fade-in-up flex-col items-center gap-2 pt-16 text-center">
-            <div className="flex h-14 w-14 items-center justify-center rounded-full bg-[#E8EEF4] text-2xl">
+            <div className="flex h-14 w-14 items-center justify-center rounded-full bg-primary-light text-2xl">
               🔔
             </div>
-            <p className="text-sm font-bold text-[#17212B]">لا توجد إشعارات حتى الآن</p>
-            <p className="max-w-xs text-[13px] font-medium text-[#687581]">
+            <p className="text-sm font-bold text-ink">لا توجد إشعارات حتى الآن</p>
+            <p className="max-w-xs text-[13px] font-medium text-ink-soft">
               ستظهر هنا أي تحديثات على معاملاتك أو حسابك.
             </p>
           </div>
@@ -63,24 +60,24 @@ export default function NotificationsPage() {
               <button
                 key={notification.id}
                 onClick={() => handleOpen(notification)}
-                className="flex animate-fade-in-up items-start gap-3 rounded-2xl border border-[#E2E7EB] bg-white p-4 text-right shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md active:bg-[#F5F6F7]"
+                className="flex animate-fade-in-up items-start gap-3 rounded-2xl border border-line bg-white p-4 text-right shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md active:bg-page"
                 style={{ animationDelay: `${index * 40}ms` }}
               >
                 {!notification.isRead && (
-                  <span className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-[#123F63]" aria-hidden="true" />
+                  <span className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-primary" aria-hidden="true" />
                 )}
                 <div className="min-w-0 flex-1">
                   <p
                     className={`text-sm ${
                       notification.isRead ? "font-semibold" : "font-extrabold"
-                    } text-[#17212B]`}
+                    } text-ink`}
                   >
                     {notification.title}
                   </p>
-                  <p className="mt-1 text-[13px] font-medium text-[#687581]">
+                  <p className="mt-1 text-[13px] font-medium text-ink-soft">
                     {notification.body}
                   </p>
-                  <p className="mt-2 text-[11px] font-medium text-[#9CA3AF]">
+                  <p className="mt-2 text-[11px] font-medium text-ink-faint">
                     {formatArabicDate(notification.createdAt)}
                   </p>
                 </div>
@@ -89,6 +86,6 @@ export default function NotificationsPage() {
           </div>
         )}
       </main>
-    </div>
+    </PageShell>
   );
 }
